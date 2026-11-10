@@ -18,7 +18,7 @@ A gestão custa tokens; só vale quando o projeto é grande o bastante. Por isso
 ## Pasta certa e novo chat (a skill cuida disso)
 Os hooks e o settings do projeto só valem quando o chat roda na raiz do projeto (onde ficam `PROJETO.md` e `.git`).
 - **Chat aberto numa pasta acima ou ao lado** (ex.: `Downloads` contendo `emissor-nfse`): no app desktop do Claude, use a ferramenta `change_directory` com a raiz do projeto assim que o PROJETO.md existir. O usuário aprova uma vez, e o settings e os hooks do projeto passam a valer neste mesmo chat. Fora do app (CLI), diga em uma linha: `cd <projeto> && claude`.
-- **Novo chat quando compensa** (regra em `compactacao.md`: contexto alto com tarefa concluída, ou trabalho grande e separado): no app desktop, proponha você mesmo com `start_session`, com `cwd` na raiz do projeto, `model` e `effort` adequados à tarefa (tabela em `compactacao.md`) e um resumo curto ("Leia PROJETO.md e continue a entrega E7 usando as skills X"). Atualize e sincronize o PROJETO.md antes. O usuário só clica para iniciar. Fora do app, entregue a frase de abertura pronta.
+- **Novo chat quando compensa** (regra em `compactacao.md`: contexto alto com tarefa concluída, ou trabalho grande e separado): no app desktop, proponha você mesmo com `start_session`, com `cwd` na raiz do projeto, `model` e `effort` adequados à tarefa (seção "Delegação") e um resumo curto ("Leia PROJETO.md e continue a entrega E7 usando as skills X"). Atualize e sincronize o PROJETO.md antes. O usuário só clica para iniciar. Fora do app, entregue a frase de abertura pronta.
 - Nunca troque de pasta nem abra chat sem o aceite do usuário (as próprias ferramentas pedem). Se ele recusar, siga no chat atual e não insista na mesma sessão.
 
 ## Camadas
@@ -78,6 +78,27 @@ Independentemente do modo:
 - Concluídos vão para `PROJETO-ARQUIVO.md` (~150 linhas ativas, teto 300).
 - Completo: sincronize (`bash scripts/sync-estado.sh`) ao fim de cada tarefa, ao registrar decisão, após merge/deploy, ao fim da sessão e antes de `/compact`.
 - A skill nunca roda `/compact` (só o usuário pode). Quem avisa o momento é o hook.
+
+## Delegação: o chat principal arquiteta, a skill distribui
+O chat principal fica no modelo mais forte disponível (ex.: Fable/Opus) e cuida do que exige julgamento: arquitetura, decisões, revisão do que voltou das delegações. A execução vai para o nível certo. No início da sessão, se o chat principal não estiver no modelo mais forte, avise em 1 linha: as delegações nunca podem usar um modelo acima do dele.
+
+Ao receber um conjunto de tarefas, quebre em partes e aplique esta regra a cada uma, sem esperar o usuário pedir:
+Antes de delegar, decida nesta ordem, em 1 linha para o usuário ("subagente Haiku/baixo: só leitura"):
+1. **Onde:** subagente se o resultado cabe num resumo e não precisa do usuário; novo chat se precisa de idas e vindas ou é grande e separado; continuar aqui se depende do que já está no contexto.
+2. **Modelo e esforço** pela tarefa, não pelo hábito:
+
+| Tarefa | Modelo | Esforço |
+|---|---|---|
+| Mecânica ou só leitura: buscar, listar, renomear, formatar, resumir arquivos | Haiku | low |
+| Implementação comum: tela, endpoint, teste, bug localizado | Sonnet | medium |
+| Difícil ou de risco: arquitetura, refatoração ampla, design/UX, bug sem pista, segurança, dinheiro, migração | o modelo atual (Opus/Fable) | high |
+
+- Subagente: passe `model` e `effort` na ferramenta Agent (a skill autoriza escolher o esforço).
+- Novo chat no app: passe `model` e `effort` no `start_session`. O app só aceita modelo igual ou mais barato que o do chat atual, e esforço igual ou menor. Por isso o chat principal deve estar no modelo mais forte que o projeto precisa.
+- Na dúvida entre dois níveis, use o de cima. Errar para baixo custa retrabalho, que sai mais caro que a diferença de preço.
+- Registre a escolha na Entrega ("E7 · novo chat Sonnet/medium") para calibrar: se precisou refazer, suba o nível dessa categoria nas próximas.
+- **Revise o que voltar:** saída de Haiku/Sonnet passa por uma conferência rápida do chat principal antes de ser dada como pronta (diff, testes, gate). A economia só vale se a qualidade se mantém.
+- **Não delegue o que é menor que a própria delegação:** tarefa de 1-3 chamadas de ferramenta, faça aqui. Delegar tem custo de contexto inicial.
 
 ## Economia de tokens
 Agrupe tarefas relacionadas e faça de uma vez. Não releia o que já está no contexto. Para trabalho grande e separado, siga a regra "novo chat × subagente" de `compactacao.md`.
