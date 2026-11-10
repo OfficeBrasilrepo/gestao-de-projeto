@@ -11,7 +11,7 @@
 ### Configuração
 - Nível: <leve|completo>
 - Modo: <Perguntar antes|Executar>
-- Chat principal: <modelo mais capaz da lista do ambiente> · arquiteta, decide e revisa
+- Chat principal: <modelo mais capaz disponível no plano> · arquiteta, decide e revisa
 - Delegação: automática por tarefa — mais barato/low (leitura, mecânico) · intermediário/medium (implementação de escopo claro) · segundo mais capaz/medium (refatoração, integração, revisão) · mais capaz/medium (arquitetura, design) · mais capaz/high (risco ou verificação crítica); modelos tirados da lista do ambiente; revisão do principal antes de dar como pronto
 - Main publica sozinha em produção: <sim|não>
 - Local: comando `<npm run dev>` · porta <3000> · rotas </, /login> · conta de teste no `.env` · banco de teste <sim/não/n.a.>
