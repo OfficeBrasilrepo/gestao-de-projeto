@@ -15,6 +15,7 @@ MIN, MAX, PADRAO = 100_000, 300_000, 150_000
 FIM_TAREFA = 0.70   # tarefa concluída e contexto >= 70% do ponto ideal -> sugere /compact
 URGENTE = 0.90      # contexto >= 90% do limite automático -> salve o estado já
 SEGUIR_MAX = 25     # modo Executar: continuações automáticas por mensagem do usuário
+DELEG_MIN = 15     # chamadas no chat principal numa entrega a partir das quais zero delegação é falha
 PARADA = "nada a seguir sem você"  # frase com que o Claude encerra quando tudo depende do usuário
 
 
@@ -34,7 +35,8 @@ def ler_transcript(caminho):
     """Uma passada no transcript. Retorna dict com: ctx (contexto por turno), bases (logo após cada
     compactação), abertura (1º turno: custo fixo de abrir um chat), compact (nº de compactações),
     ultimo (último texto do Claude) e usuario (nº de mensagens digitadas pelo usuário)."""
-    r = {"ctx": [], "bases": [], "abertura": 0, "compact": 0, "ultimo": "", "usuario": 0}
+    r = {"ctx": [], "bases": [], "abertura": 0, "compact": 0, "ultimo": "", "usuario": 0,
+         "ferramentas": 0, "delegacoes": []}  # chamadas feitas no próprio chat × subagentes/novos chats
     depois = False
     try:
         f = open(caminho, encoding="utf-8")
@@ -65,6 +67,10 @@ def ler_transcript(caminho):
             if d.get("isMeta") or d.get("isCompactSummary"):
                 continue
             c = m.get("content")
+            if d.get("type") == "assistant" and isinstance(c, list):
+                for b in c:
+                    if isinstance(b, dict) and b.get("type") == "tool_use":
+                        delegacao(b, r)
             textos = [c] if isinstance(c, str) else [b.get("text", "") for b in c or [] if isinstance(b, dict) and b.get("type") == "text"]
             if not textos:
                 continue
@@ -73,6 +79,30 @@ def ler_transcript(caminho):
             elif d.get("type") == "user" and digitado(textos[0]):
                 r["usuario"] += 1
     return r
+
+
+def delegacao(b, r):
+    """Conta uma chamada de ferramenta: subagente (Agent/Task) ou novo chat entra em delegacoes, com o modelo."""
+    nome, inp = b.get("name", ""), b.get("input") or {}
+    if nome in ("Agent", "Task"):
+        r["delegacoes"].append(f"{inp.get('model') or 'herdado'}/{inp.get('effort') or '-'}")
+    elif nome.endswith("start_session"):
+        r["delegacoes"].append(f"chat {inp.get('model') or 'herdado'}")
+    else:
+        r["ferramentas"] += 1
+
+
+def fechamento(antes, agora, n_ferr, n_deleg, delegs):
+    """Texto do fechamento de entrega ou None. antes/agora = campo Tarefa; fecha quando sai de uma tarefa."""
+    if antes in ("", "—", "-") or antes == agora:
+        return None
+    resumo = ", ".join(f"{delegs.count(x)}× {x}" for x in sorted(set(delegs))) or "nenhuma"
+    txt = f"Entrega '{antes}' fechada: {n_ferr} chamadas no chat principal, delegações: {resumo}."
+    if n_ferr >= DELEG_MIN and not n_deleg:
+        txt += (" Zero delegações com esse volume é falha da regra 'Sempre fora do principal' (testes, build, navegador,"
+                " leitura de mais de 3 arquivos, logs): na próxima entrega, delegue essas partes.")
+    return txt + (" Feche a entrega: leia get_usage e diga ao usuário em 1 linha o % da Definição de Pronto, as"
+                  " pendências bloqueantes, as delegações acima e o uso do plano (aplique 'Limites do plano').")
 
 
 def digitado(t):
@@ -232,6 +262,17 @@ def cmd_fim(dados):
         if bloquear(f"o projeto cresceu ({sessoes} sessões, {compact} compactações, pico {k(max(ctx))}). Suba agora "
                     "para o nível completo, conforme 'Níveis' da skill gestao-de-projeto, e avise o usuário em uma linha."):
             st["subir"] = 1
+    # fechamento de entrega: mede delegações desde que a tarefa começou e pede o fechamento (get_usage, %, bloqueantes)
+    tarefa = campo(texto, "Tarefa")
+    ent = st.get(sid + ":ent") or [tarefa, t["ferramentas"], len(t["delegacoes"])]
+    fecho = fechamento(ent[0], tarefa, t["ferramentas"] - ent[1], len(t["delegacoes"]) - ent[2], t["delegacoes"][ent[2]:])
+    if fecho and bloquear(fecho):  # se outro motivo já usou a vez, fecha na próxima parada
+        linha = fecho.split(" Zero")[0].split(" Feche")[0]
+        saida["systemMessage"] = saida["systemMessage"] + " · " + linha if "systemMessage" in saida else "[gestão] " + linha
+        ent = [tarefa, t["ferramentas"], len(t["delegacoes"])]
+    elif not fecho and ent[0] != tarefa:  # começou tarefa: a contagem parte daqui
+        ent = [tarefa, t["ferramentas"], len(t["delegacoes"])]
+    st[sid + ":ent"] = ent
     # PROJETO.md desatualizado: devolve a vez ao Claude uma vez por versão do arquivo
     mtime = int(os.path.getmtime(os.path.join(cwd, "PROJETO.md")))
     if "decision" not in saida and st.get("lembrete") != mtime:
@@ -239,7 +280,7 @@ def cmd_fim(dados):
         ult = git(cwd, "log", "-1", "--format=%ct")
         motivo = motivo_desatualizado(mtime, sum(1 for r in rows if len(r) > 1 and int(r[0]) > mtime),
                                       int(ult) if ult.isdigit() else 0, alterados)
-        if motivo and bloquear(f"{motivo}. Atualize agora o PROJETO.md (Em andamento, Entregas, Decisões, Pendências, "
+        if motivo and bloquear(f"{motivo}. Atualize agora o PROJETO.md (Em andamento, com 'Tarefa: —' se a tarefa acabou; Entregas, Decisões, Pendências, "
                                "Branches) com edições pontuais e sincronize se o nível for completo. Não fale disso ao usuário."):
             st["lembrete"] = mtime
     # modo Executar: não para enquanto houver o que avançar sem o usuário (limite por mensagem dele, contra custo sem fim)
@@ -256,8 +297,10 @@ def cmd_fim(dados):
         st[sid + ":seg"] = seg
     # guarda as sessões recentes: dois chats abertos no mesmo projeto não apagam o estado um do outro
     recentes = {r[1] for r in rows[-500:] if len(r) > 1} | {sid}
-    with open(st_path, "w", encoding="utf-8") as f:
+    tmp = st_path + f".{os.getpid()}"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump({c: v for c, v in st.items() if c in ("subir", "lembrete") or c.split(":")[0] in recentes}, f)
+    os.replace(tmp, st_path)  # troca atômica: um chat nunca lê o arquivo pela metade
     if saida:
         print(json.dumps(saida, ensure_ascii=False))
 
@@ -378,6 +421,9 @@ def teste():
     assert comparar(54_000, 80_000) == "54k (antes da skill: 80k, -32%)" and comparar(54_000, None) == "54k"
     assert parou("Pronto. Nada a seguir sem você.") and parou("nada mais a seguir sem voce") and not parou("sigo")
     assert digitado("corrige isso") and not digitado("<task-notification>x") and not digitado("Stop hook feedback: [gestão] x")
+    assert fechamento("—", "E1", 5, 0, []) is None and fechamento("E1", "E1", 50, 0, []) is None
+    assert "falha" in fechamento("E1", "—", 20, 0, []) and "falha" not in fechamento("E1", "—", 20, 1, ["haiku/low"])
+    assert "1× haiku/low" in fechamento("E1", "E2", 3, 1, ["haiku/low"]) and "falha" not in fechamento("E1", "—", 5, 0, [])
     print("ok")
 
 
