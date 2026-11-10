@@ -46,7 +46,7 @@ Modelo e esforço de cada delegação: seção "Delegação" do `SKILL.md`.
   }
 }
 ```
-Os caminhos usam `${USERPROFILE:-$HOME}` e funcionam em qualquer Windows (Git Bash), macOS ou Linux; só troque `python` por `python3` se for o nome na máquina. Instale os dois já ao criar o PROJETO.md, com uma permissão só. O `Stop` também faz a subida automática de nível: devolve a vez ao Claude uma vez, com `decision: block`, e nunca repete quando `stop_hook_active` está ativo. Com o `SessionStart` instalado, a linha do CLAUDE.md vira fallback.
+Os caminhos usam `${USERPROFILE:-$HOME}` e funcionam em qualquer Windows (Git Bash), macOS ou Linux; só troque `python` por `python3` se for o nome na máquina. Instale os dois já ao criar o PROJETO.md, com uma permissão só. O `Stop` também faz a subida automática de nível: devolve a vez ao Claude uma vez, com `decision: block`, e nunca repete quando `stop_hook_active` está ativo. Com o `SessionStart` instalado, a linha do CLAUDE.md vira fallback. No modo Executar, o `Stop` também mantém o trabalho andando: devolve a vez enquanto o Claude não encerrar com "nada a seguir sem você", até 25 vezes por mensagem do usuário.
 
 ## Descartado
 - **Bloquear a compactação com `PreCompact`:** funciona (saída 2 bloqueia e o usuário vê a mensagem), mas o risco de bater no teto do modelo não compensa; o aviso no momento certo resolve.

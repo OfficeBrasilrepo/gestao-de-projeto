@@ -13,6 +13,8 @@ MIN, MAX, PADRAO = 100_000, 300_000, 150_000
 # Avisos em TOKENS ABSOLUTOS, não em % da janela do usuário:
 FIM_TAREFA = 0.70   # tarefa concluída e contexto >= 70% do ponto ideal -> sugere /compact
 URGENTE = 0.90      # contexto >= 90% do limite automático -> salve o estado já
+SEGUIR_MAX = 25     # modo Executar: continuações automáticas por mensagem do usuário
+PARADA = "nada a seguir sem você"  # frase com que o Claude encerra quando tudo depende do usuário
 
 
 def janela_ideal(base_pos_compact):
@@ -53,6 +55,32 @@ def ler_transcript(caminho):
                 bases.append(c)
                 depois = False
     return ctx, bases, n
+
+
+def ler_fim(caminho):
+    """(último texto do Claude, nº de mensagens digitadas pelo usuário) — para o modo Executar seguir sozinho."""
+    ultimo, usuario = "", 0
+    try:
+        f = open(caminho, encoding="utf-8")
+    except OSError:
+        return ultimo, usuario
+    for linha in f:
+        try:
+            d = json.loads(linha)
+        except ValueError:
+            continue
+        m = d.get("message")
+        if not isinstance(m, dict) or d.get("isMeta"):
+            continue
+        c = m.get("content")
+        textos = [c] if isinstance(c, str) else [b.get("text", "") for b in c or [] if isinstance(b, dict) and b.get("type") == "text"]
+        if not textos:
+            continue
+        if d.get("type") == "assistant":
+            ultimo = textos[-1]
+        elif d.get("type") == "user" and not any("[gestão]" in t for t in textos):
+            usuario += 1
+    return ultimo, usuario
 
 
 def settings_path(cwd):
@@ -201,6 +229,21 @@ def cmd_fim(dados):
             saida["decision"] = "block"
             saida["reason"] = (f"[gestão] {motivo}. Atualize agora o PROJETO.md (Em andamento, Entregas, Decisões, "
                                "Pendências, Branches) com edições pontuais e sincronize se o nível for completo. Não fale disso ao usuário.")
+    # modo Executar: não para enquanto houver o que avançar sem o usuário (limite por mensagem dele, contra custo sem fim)
+    if "decision" not in saida and campo(texto, "Modo").lower().startswith("executar"):
+        ultimo, usuario = ler_fim(dados.get("transcript_path", ""))
+        seg = st.get(sid + ":seg", [usuario, 0])
+        if seg[0] != usuario:
+            seg = [usuario, 0]
+        if PARADA not in ultimo.lower() and seg[1] < SEGUIR_MAX:
+            seg[1] += 1
+            saida["decision"] = "block"
+            saida["reason"] = (f"[gestão] Modo Executar (contexto {ctx[-1] // 1000}k): não pare. Siga para a próxima entrega, "
+                               "pendência ou passo que não depende do usuário, por prioridade, e atualize o PROJETO.md ao concluir "
+                               "cada um. O que depende dele (aval, arquivos, push, publicação, merge que publica, ação irreversível) "
+                               "fica registrado em Pendências/Perguntas e não trava o resto. Se nada mais puder avançar sem ele, "
+                               f"termine com a frase exata '{PARADA}' e um resumo curto do que espera dele.")
+        st[sid + ":seg"] = seg
     json.dump({k: v for k, v in st.items() if k in ("subir", "lembrete") or k.startswith(sid)}, open(st_path, "w"))
     if saida:
         print(json.dumps(saida, ensure_ascii=False))

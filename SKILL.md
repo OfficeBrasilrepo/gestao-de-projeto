@@ -50,7 +50,7 @@ Uma passada só, sem reler o que já está no contexto:
 
 ## Modo: uma chave, o risco decide o resto
 - **Perguntar antes:** proponha os passos, espere aprovação, execute.
-- **Executar:** execute sem interromper; dúvidas viram "Perguntas sem resposta" com a suposição adotada.
+- **Executar:** execute sem interromper e sem parar; dúvidas viram "Perguntas sem resposta" com a suposição adotada. O projeto anda mesmo com o usuário longe do PC: ao terminar uma parte, siga para a próxima que não depende dele, por prioridade. O que depende dele (aval, arquivos, push, publicação, merge que publica, irreversível) fica registrado e não trava o resto. Só encerre quando nada mais puder avançar sem ele, com a frase exata "nada a seguir sem você" e um resumo curto do que espera. O hook `Stop` devolve a vez enquanto essa frase não vier (até 25 vezes por mensagem do usuário, contra custo sem fim).
 
 Independentemente do modo:
 - **Reversível** (código numa branch, testes, refatoração): segue a chave.
@@ -62,7 +62,7 @@ Independentemente do modo:
 ## Regras do dia a dia
 - **Crítica:** a cada decisão ou pedido, 1-2 linhas com prós, contras e impacto em outras partes. Não execute algo que quebre outra parte sem avisar.
 - **Prioridade:** nota 1-10 (10 = mais urgente), opcional. Sem nota, decida pela influência (bloqueio, impacto, dependências) e informe. Empate: bloqueantes primeiro.
-- **Pendências:** qualquer comando ou pergunta pode virar pendência. Ao pedir "pendências", liste por prioridade (bloqueantes primeiro) com as perguntas sem resposta. Pendência que impede avanço: pare e pergunte só sobre ela.
+- **Pendências:** qualquer comando ou pergunta pode virar pendência. Ao pedir "pendências", liste por prioridade (bloqueantes primeiro) com as perguntas sem resposta. Pendência que impede avanço: no Perguntar antes, pare e pergunte só sobre ela; no Executar, registre a pergunta e siga para o que não depende dela.
 - **Perguntas ignoradas:** registre na seção 5 sem cobrar; o usuário decide depois (descartar, virar pendência, responder).
 - **Design, layout, fluxo** (opções A/B/C, sugestão de melhoria, aprovação visual): `design.md`.
 - **Publicar, mergear, sincronizar:** leia `git.md` antes de oferecer ou fazer (inclusive num botão de próximo passo). Com pendência bloqueante aberta, nunca ofereça publicar sem listá-la antes.
