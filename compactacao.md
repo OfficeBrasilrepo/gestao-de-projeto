@@ -9,11 +9,12 @@
 ## Estratégia (tudo em tokens absolutos, nunca em % da janela do usuário)
 1. **Ponto ideal** (`monitor.py janela`, no `SessionStart`): ≈ 3× a base medida após compactar, entre 100k e 300k, 150k sem dados. Fica em `.claude/gestao/ideal.json`. Se a janela do usuário for menor, o ideal vira 80% dela.
 2. **Rede de segurança** (sempre): grava `autoCompactWindow` = ponto ideal + 40% no `.claude/settings.local.json` do projeto, se mudar > 20%. Use a chave, não o env (o env trava o comando). Vale na próxima abertura e não afeta outros projetos.
-3. **Avisos** (`monitor.py fim`, no `Stop`, a cada resposta): mostrados **só ao usuário**, sem gastar tokens. Sempre com os números, por exemplo "contexto 95k · ponto ideal 150k · automática em 350k":
+3. **Avisos** (`monitor.py fim`, no `Stop`, a cada resposta): mostrados ao usuário, sem gastar tokens. Sempre com os números, por exemplo "contexto 95k · ponto ideal 150k · automática em 350k":
    - tarefa concluída (`Tarefa: —`) e contexto ≥ 70% do ideal → bom momento para /compact;
    - contexto ≥ ideal → /compact ao fim do passo atual;
    - contexto ≥ 90% do limite automático → salvar o estado e compactar já;
-   - uma vez por faixa e por ciclo de compactação.
+   - uma vez por faixa e por ciclo de compactação;
+   - nas faixas 1 e 3 o hook também devolve a vez ao Claude uma vez, para ele mesmo atualizar o estado e propor o novo chat (`start_session`) ou pedir o /compact; o usuário não precisa lembrar.
    Antes do usuário compactar, garanta "Em andamento" atualizado e o estado sincronizado.
 4. **Medição:** cada resposta grava `timestamp, sessão, contexto, compactações` em `.claude/gestao/medicao.csv` (~100 ms, algumas dezenas de bytes por resposta). `python ~/.claude/skills/gestao-de-projeto/scripts/monitor.py resumo < /dev/null` mostra turnos, contexto médio por turno, pico, ponto ideal e janela. O contexto médio por turno é o principal indicador de custo: cada turno relê o contexto inteiro, e com cache isso custa ~10%, mas soma.
 

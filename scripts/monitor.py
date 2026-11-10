@@ -166,6 +166,14 @@ def cmd_fim(dados):
     if alerta:
         st[chave], msg = alerta
         saida["systemMessage"] = "[gestão] " + msg  # só o usuário vê; não gasta tokens
+        # faixas 1 e 3: devolve a vez ao Claude uma vez, para ele mesmo preparar o novo chat ou o /compact
+        if st[chave] in (1, 3) and not dados.get("stop_hook_active"):
+            saida["decision"] = "block"
+            saida["reason"] = f"[gestão] {msg}. " + (
+                "Atualize e sincronize o PROJETO.md e, conforme 'Pasta certa e novo chat' da skill gestao-de-projeto, "
+                "proponha ao usuário em 1 linha: novo chat (start_session com cwd na raiz, modelo e esforço da próxima tarefa) "
+                "se a próxima tarefa for separada, ou /compact se for continuação." if st[chave] == 1 else
+                "Atualize Em andamento, sincronize e peça ao usuário em 1 linha para rodar /compact agora.")
     rows = ler_medicao(cwd)
     sessoes = len({r[1] for r in rows if len(r) > 1})
     if (precisa_subir(campo(texto, "Nível"), sessoes, compact, max(ctx))
