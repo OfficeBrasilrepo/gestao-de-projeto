@@ -11,7 +11,7 @@
 ### Configuração
 - Nível: <leve|completo>
 - Modo: <Perguntar antes|Executar>
-- Chat principal: <modelo mais capaz disponível no plano> · arquiteta, decide e revisa
+- Chat principal: <modelo da sessão; o ideal é o mais capaz disponível no plano> · arquiteta, decide e revisa
 - Delegação: automática por tarefa — mais barato/low (leitura, mecânico) · intermediário/medium (implementação de escopo claro) · segundo mais capaz/medium (refatoração, integração, revisão) · mais capaz/medium (arquitetura, design) · mais capaz/high (risco ou verificação crítica); só modelos disponíveis no plano (sem o topo, o mais capaz disponível assume); revisão do principal antes de dar como pronto
 - Main publica sozinha em produção: <sim|não>
 - Arquivar chat substituído: sim (reversível; o novo chat principal arquiva o antigo quando ele não tem mais reuso)

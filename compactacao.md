@@ -10,11 +10,11 @@
 1. **Ponto ideal** (`monitor.py janela`, no `SessionStart`): ≈ 3× a base medida após compactar, entre 100k e 300k, 150k sem dados. Fica em `.claude/gestao/ideal.json`. Se a janela do usuário for menor, o ideal vira 80% dela.
 2. **Rede de segurança** (sempre): grava `autoCompactWindow` = ponto ideal + 40% no `.claude/settings.local.json` do projeto, se mudar > 20%. Use a chave, não o env (o env trava o comando). Vale na próxima abertura e não afeta outros projetos.
 3. **Avisos** (`monitor.py fim`, no `Stop`, a cada resposta): mostrados ao usuário, sem gastar tokens. Sempre com os números, por exemplo "contexto 95k · ponto ideal 150k · automática em 350k":
-   - tarefa concluída (`Tarefa: —`) e contexto ≥ 70% do ideal → bom momento para /compact;
-   - contexto ≥ ideal → /compact ao fim do passo atual;
-   - contexto ≥ 90% do limite automático → salvar o estado e compactar já;
-   - uma vez por faixa e por ciclo de compactação;
-   - nas faixas 1 e 3 o hook também devolve a vez ao Claude uma vez, para ele mesmo atualizar o estado e propor o novo chat (`start_session`) ou pedir o /compact; o usuário não precisa lembrar.
+   - tarefa concluída (`Tarefa: —`) e contexto ≥ 70% do ideal → bom momento para trocar de chat;
+   - contexto ≥ ideal → trocar ao fim do passo atual;
+   - contexto ≥ 90% do limite automático → salvar o estado e trocar já;
+   - uma vez por faixa e por ciclo de compactação.
+   O hook também devolve a vez ao Claude, uma vez por ciclo, para ele mesmo atualizar o estado e propor o novo chat (`start_session`, `/compact` como segunda opção); o usuário não precisa lembrar. Isso acontece na faixa 3, na hora, ou quando a tarefa termina depois de qualquer aviso, desde que o contexto já tenha passado do dobro da base (a base logo após a última compactação ou, sem compactação, o primeiro turno do chat).
    Antes do usuário compactar, garanta "Em andamento" atualizado e o estado sincronizado.
 4. **Medição:** cada resposta grava `timestamp, sessão, contexto, compactações` em `.claude/gestao/medicao.csv` (~100 ms, algumas dezenas de bytes por resposta). `python ~/.claude/skills/gestao-de-projeto/scripts/monitor.py resumo < /dev/null` mostra turnos, contexto médio por turno, pico, ponto ideal e janela. O contexto médio por turno é o principal indicador de custo: cada turno relê o contexto inteiro, e com cache isso custa ~10%, mas soma.
 
@@ -22,9 +22,9 @@
 | Situação | Melhor | Por quê |
 |---|---|---|
 | Busca, leitura ampla, revisão, cujo resultado cabe num resumo | **Subagente** | Contexto próprio e descartável; volta só a conclusão. Barato para o chat principal. |
-| Trabalho grande e separado (módulo novo, refatoração ampla) que precisa de idas e vindas com o usuário | **Novo chat** com `PROJETO.md` | Começa enxuto (~20-30k), sem carregar o histórico; o usuário conduz. Ao terminar, atualize o PROJETO.md para o chat principal ver. |
+| Trabalho grande e separado (módulo novo, refatoração ampla) que precisa de idas e vindas com o usuário | **Novo chat** com `PROJETO.md` | Começa só com a base fixa (ferramentas, skills, resumo do PROJETO.md), sem o histórico; o usuário conduz. Ao terminar, atualize o PROJETO.md para o chat principal ver. |
 | Continuação direta do que está em contexto | **Continuar** | Reler tudo em outro lugar custaria mais. |
-| Contexto alto e tarefa acabou | **`/compact`** no mesmo chat | Equivale a um novo chat, mas mantém o fio. |
+| Contexto alto e tarefa acabou | **Novo chat do projeto** (cartão) | Um clique e já retoma o trabalho. `/compact` no mesmo chat só se o próximo passo depender muito do contexto atual. |
 | Contexto abaixo do dobro da base de abertura do chat | **Continuar** | Um chat novo começaria quase no mesmo ponto e sem cache (gravar cache custa mais que ler). O hook só sugere a troca acima disso. |
 
 **Preparar o novo chat enxuto:** registre a tarefa em Entregas e em "Em andamento", com só o necessário: arquivos que ela toca, decisões que a afetam e skills úteis. Para as skills, siga "Skills de cada delegação" no `SKILL.md` (find-skills por assunto, anotadas na seção 7 ou, no Leve, em Decisões). Depois entregue ao usuário a frase de abertura pronta, por exemplo "Leia PROJETO.md, faça a entrega E7 usando as skills X e Y". Sugira o novo chat em 1 linha.
@@ -47,7 +47,7 @@ Modelo e esforço de cada delegação: seção "Delegação" do `SKILL.md`.
   }
 }
 ```
-Os caminhos usam `${USERPROFILE:-$HOME}` e funcionam em qualquer Windows (Git Bash), macOS ou Linux; só troque `python` por `python3` se for o nome na máquina. Instale os dois já ao criar o PROJETO.md, com uma permissão só. O `Stop` também faz a subida automática de nível: devolve a vez ao Claude uma vez, com `decision: block`, e nunca repete quando `stop_hook_active` está ativo. Com o `SessionStart` instalado, a linha do CLAUDE.md vira fallback. No modo Executar, o `Stop` também mantém o trabalho andando: devolve a vez enquanto o Claude não encerrar com "nada a seguir sem você", até 25 vezes por mensagem do usuário.
+Os caminhos usam `${USERPROFILE:-$HOME}` e funcionam em qualquer Windows (Git Bash), macOS ou Linux; só troque `python` por `python3` se for o nome na máquina. Instale os dois já ao criar o PROJETO.md, com uma permissão só. O `Stop` também faz a subida automática de nível. Cada devolução da vez (`decision: block`: novo chat, subida, PROJETO.md velho) dispara no máximo uma vez, por ciclo ou por versão do arquivo, e só uma por resposta; por isso não depende de `stop_hook_active` e funciona também no meio das continuações do modo Executar. Com o `SessionStart` instalado, a linha do CLAUDE.md vira fallback. No modo Executar, o `Stop` também mantém o trabalho andando: devolve a vez enquanto o Claude não encerrar com "nada a seguir sem você", até 25 vezes por mensagem do usuário (notificações e saídas de comando não contam como mensagem; a frase tolera variação de acento e "nada mais").
 
 ## Descartado
 - **Bloquear a compactação com `PreCompact`:** funciona (saída 2 bloqueia e o usuário vê a mensagem), mas o risco de bater no teto do modelo não compensa; o aviso no momento certo resolve.

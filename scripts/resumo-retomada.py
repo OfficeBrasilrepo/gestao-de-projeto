@@ -63,11 +63,11 @@ def main():
 
 if __name__ == "__main__":
     if "--teste" in sys.argv:
-        t = ("## 1. Visão\n### Configuração\n- Modo: Autônomo\n### Em andamento\n- Tarefa: X\n"
+        t = ("## 1. Visão\n### Configuração\n- Modo: Executar\n### Em andamento\n- Tarefa: X\n"
              "## 3. Decisões\n|D|d|m|p|\n|-|-|-|-|\n|1|a|b|c|\n|2|e|f|g|\n"
              "## 4. Pendências\n|ID|A|P|B|Br|O|\n|-|-|-|-|-|-|\n|P1|trava|9|sim|-|u|\n|P2|leve|2|não|-|u|\n")
         r = resumo(t)
-        assert "Modo: Autônomo" in r and "Tarefa: X" in r and "P1" in r and "P2" not in r and "e | f" in r, r
+        assert "Modo: Executar" in r and "Tarefa: X" in r and "P1" in r and "P2" not in r and "e | f" in r, r
         print("ok")
     else:
         main()

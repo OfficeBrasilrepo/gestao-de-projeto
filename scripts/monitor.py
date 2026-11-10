@@ -1,13 +1,14 @@
 """Medição em tempo real da skill gestao-de-projeto (zero tokens quando silencioso).
   monitor.py fim     -> hook Stop: mede o contexto do turno, grava em .claude/gestao/medicao.csv e,
-                        no momento certo, mostra ao USUÁRIO uma linha sugerindo /compact ou subir de nível.
+                        no momento certo, avisa o usuário e devolve a vez ao Claude (novo chat, subir nível,
+                        PROJETO.md velho, modo Executar seguir).
   monitor.py janela  -> hook SessionStart: recalcula a janela de auto-compactação do projeto e grava
                         "autoCompactWindow" no .claude/settings.local.json (vale a partir da próxima abertura).
   monitor.py resumo  -> números do projeto, comparando com a linha de base.
   monitor.py status  -> uma linha: nível, % pronto, pendências bloqueantes, contexto atual.
   monitor.py linha-base -> mede os logs do projeto ANTES da skill (rodar uma vez, na adoção).
 Entrada dos hooks: JSON no stdin com cwd, session_id, transcript_path."""
-import csv, json, os, re, statistics, subprocess, sys, time
+import csv, json, os, re, statistics, subprocess, sys, time, unicodedata
 
 MIN, MAX, PADRAO = 100_000, 300_000, 150_000
 # Avisos em TOKENS ABSOLUTOS, não em % da janela do usuário:
@@ -30,57 +31,60 @@ def rede_seguranca(ideal):
 
 
 def ler_transcript(caminho):
-    """Retorna (contextos por turno, bases: início do chat e pós-compactação, nº de compactações)."""
-    ctx, bases, n, depois = [], [], 0, True  # o 1º turno também é base: o custo fixo de abrir um chat
+    """Uma passada no transcript. Retorna dict com: ctx (contexto por turno), bases (logo após cada
+    compactação), abertura (1º turno: custo fixo de abrir um chat), compact (nº de compactações),
+    ultimo (último texto do Claude) e usuario (nº de mensagens digitadas pelo usuário)."""
+    r = {"ctx": [], "bases": [], "abertura": 0, "compact": 0, "ultimo": "", "usuario": 0}
+    depois = False
     try:
         f = open(caminho, encoding="utf-8")
     except OSError:
-        return ctx, bases, n
-    for linha in f:
-        try:
-            d = json.loads(linha)
-        except ValueError:
-            continue
-        if d.get("type") == "system" and d.get("subtype") == "compact_boundary":
-            n, depois = n + 1, True
-            continue
-        m = d.get("message")
-        if d.get("type") == "assistant" and isinstance(m, dict) and m.get("usage"):
-            u = m["usage"]
-            c = u.get("input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0)
-            if ctx and c == ctx[-1]:
+        return r
+    with f:
+        for linha in f:
+            try:
+                d = json.loads(linha)
+            except ValueError:
                 continue
-            ctx.append(c)
-            if depois:
-                bases.append(c)
-                depois = False
-    return ctx, bases, n
+            if d.get("type") == "system" and d.get("subtype") == "compact_boundary":
+                r["compact"] += 1
+                depois = True
+                continue
+            m = d.get("message")
+            if not isinstance(m, dict):
+                continue
+            if d.get("type") == "assistant" and m.get("usage"):
+                u = m["usage"]
+                c = u.get("input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+                if not r["ctx"] or c != r["ctx"][-1]:
+                    r["ctx"].append(c)
+                    r["abertura"] = r["abertura"] or c
+                    if depois:
+                        r["bases"].append(c)
+                        depois = False
+            if d.get("isMeta") or d.get("isCompactSummary"):
+                continue
+            c = m.get("content")
+            textos = [c] if isinstance(c, str) else [b.get("text", "") for b in c or [] if isinstance(b, dict) and b.get("type") == "text"]
+            if not textos:
+                continue
+            if d.get("type") == "assistant":
+                r["ultimo"] = textos[-1]
+            elif d.get("type") == "user" and digitado(textos[0]):
+                r["usuario"] += 1
+    return r
 
 
-def ler_fim(caminho):
-    """(último texto do Claude, nº de mensagens digitadas pelo usuário) — para o modo Executar seguir sozinho."""
-    ultimo, usuario = "", 0
-    try:
-        f = open(caminho, encoding="utf-8")
-    except OSError:
-        return ultimo, usuario
-    for linha in f:
-        try:
-            d = json.loads(linha)
-        except ValueError:
-            continue
-        m = d.get("message")
-        if not isinstance(m, dict) or d.get("isMeta"):
-            continue
-        c = m.get("content")
-        textos = [c] if isinstance(c, str) else [b.get("text", "") for b in c or [] if isinstance(b, dict) and b.get("type") == "text"]
-        if not textos:
-            continue
-        if d.get("type") == "assistant":
-            ultimo = textos[-1]
-        elif d.get("type") == "user" and not any("[gestão]" in t for t in textos):
-            usuario += 1
-    return ultimo, usuario
+def digitado(t):
+    """Mensagem escrita pelo usuário, não injetada (hook, notificação, saída de comando, interrupção)."""
+    t = t.lstrip()
+    return bool(t) and "[gestão]" not in t and not t.startswith(("<", "[Request interrupted", "Stop hook feedback", "Caveat:"))
+
+
+def parou(texto):
+    """O Claude encerrou com a frase de parada (tolera acento, maiúscula e 'nada mais')."""
+    t = unicodedata.normalize("NFKD", texto.lower()).encode("ascii", "ignore").decode()
+    return re.search(r"nada (mais )?a seguir sem voce", t) is not None
 
 
 def settings_path(cwd):
@@ -141,11 +145,11 @@ def decidir_alerta(ctx, ideal, limite, tarefa_ativa, ja_avisado):
     k = lambda n: f"{n // 1000}k"
     info = f"contexto {k(ctx)} · ponto ideal {k(ideal)}" + (f" · automática em {k(limite)}" if limite else "")
     if limite and ctx >= URGENTE * limite and ja_avisado < 3:
-        return 3, f"{info}: salve o estado e rode /compact já, antes da compactação automática"
+        return 3, f"{info}: salve o estado e troque de chat (ou /compact) já, antes da compactação automática"
     if ctx >= ideal and ja_avisado < 2:
-        return 2, f"{info}: passou do ponto ideal; rode /compact ao fim do passo atual"
+        return 2, f"{info}: passou do ponto ideal; troque de chat (ou /compact) ao fim do passo atual"
     if not tarefa_ativa and ctx >= FIM_TAREFA * ideal and ja_avisado < 1:
-        return 1, f"{info}: tarefa concluída, bom momento para /compact"
+        return 1, f"{info}: tarefa concluída, bom momento para trocar de chat (ou /compact)"
     return None
 
 
@@ -174,81 +178,86 @@ def cmd_fim(dados):
     texto = projeto(cwd)
     if not texto:
         return
-    ctx, bases, compact = ler_transcript(dados.get("transcript_path", ""))
+    tp = dados.get("transcript_path", "")
+    t = ler_transcript(tp)
+    ctx, compact = t["ctx"], t["compact"]
     if not ctx:
         return
-    sid = dados.get("session_id", "?")
+    sid = dados.get("session_id") or os.path.splitext(os.path.basename(tp))[0] or "?"
     est = pasta_estado(cwd)
     with open(os.path.join(est, "medicao.csv"), "a", newline="", encoding="utf-8") as f:
         csv.writer(f).writerow([int(time.time()), sid, ctx[-1], compact])
     # estado de avisos por sessão + ciclo de compactação
     st_path = os.path.join(est, "avisos.json")
     try:
-        st = json.load(open(st_path, encoding="utf-8"))
+        with open(st_path, encoding="utf-8") as f:
+            st = json.load(f)
     except (OSError, ValueError):
         st = {}
     chave = f"{sid}:{compact}"
     saida = {}
+    k = lambda n: f"{n // 1000}k"
+
+    def bloquear(reason):  # devolve a vez ao Claude; um motivo por resposta, o primeiro vence
+        if "decision" in saida:
+            return False
+        saida["decision"], saida["reason"] = "block", "[gestão] " + reason
+        return True
+
+    # Cada bloqueio abaixo dispara no máximo uma vez (por ciclo ou por versão do arquivo), então não depende de
+    # stop_hook_active: no modo Executar quase toda parada é uma continuação e eles nunca disparariam.
     ativa = campo(texto, "Tarefa") not in ("", "—", "-")
     alerta = decidir_alerta(ctx[-1], ler_ideal(cwd), janela_atual(cwd), ativa, st.get(chave, 0))
     if alerta:
         st[chave], msg = alerta
         saida["systemMessage"] = "[gestão] " + msg  # só o usuário vê; não gasta tokens
-    # devolve a vez ao Claude para ele preparar o novo chat ou o /compact: urgente (3) na hora;
-    # senão, uma vez por ciclo, quando já houve aviso e a tarefa terminou (mesmo que o aviso tenha vindo antes)
-    urgente = alerta and alerta[0] == 3
-    # novo chat só compensa se o contexto já passou do dobro da base (o novo começaria nela de novo, sem cache)
-    fim_tarefa = (not ativa and st.get(chave, 0) >= 1 and not st.get(chave + ":p")
-                  and ctx[-1] >= 2 * (bases[-1] if bases else 0))
-    if (urgente or fim_tarefa) and not dados.get("stop_hook_active"):
-        st[chave + ":p"] = 1
-        info = f"[gestão] contexto {ctx[-1] // 1000}k. "
-        saida["decision"] = "block"
-        saida["reason"] = info + (
-            "Contexto perto da compactação automática. Atualize Em andamento, sincronize e proponha já o novo chat do projeto "
-            "(start_session com cwd na raiz, resumo do próximo passo, modelo e esforço pela Delegação) como cartão clicável; "
-            "/compact só como segunda opção." if urgente else
-            "Tarefa concluída com contexto alto. Atualize e sincronize o PROJETO.md e, conforme 'Pasta certa e novo chat' "
-            "da skill gestao-de-projeto, proponha ao usuário em 1 linha: novo chat (start_session com cwd na raiz, modelo "
-            "e esforço da próxima tarefa) se a próxima tarefa for separada, ou /compact se for continuação.")
+    # novo chat só compensa acima do dobro da base (o novo começaria nela de novo, sem cache)
+    base = t["bases"][-1] if t["bases"] else t["abertura"]
+    if not st.get(chave + ":p"):
+        if st.get(chave, 0) == 3:
+            proposta = ("contexto perto da compactação automática. Atualize Em andamento, sincronize e proponha já o novo "
+                        "chat do projeto (start_session, cwd na raiz, modelo e esforço pela Delegação) como cartão clicável; "
+                        "/compact só como segunda opção.")
+        elif not ativa and st.get(chave, 0) >= 1 and ctx[-1] >= 2 * base:
+            proposta = ("tarefa concluída com contexto alto. Atualize e sincronize o PROJETO.md e proponha em 1 linha, "
+                        "conforme 'Pasta certa e novo chat': novo chat (start_session) se a próxima tarefa for separada, "
+                        "ou /compact se for continuação.")
+        else:
+            proposta = ""
+        if proposta and bloquear(f"contexto {k(ctx[-1])}: " + proposta):
+            st[chave + ":p"] = 1
     rows = ler_medicao(cwd)
     sessoes = len({r[1] for r in rows if len(r) > 1})
-    if (precisa_subir(campo(texto, "Nível"), sessoes, compact, max(ctx))
-            and not st.get("subir") and not dados.get("stop_hook_active")):
-        st["subir"] = 1
-        # subida automática: devolve a vez ao Claude uma única vez com a instrução
-        saida["decision"] = "block"
-        saida["reason"] = (f"[gestão] O projeto cresceu ({sessoes} sessões, {compact} compactações, pico {max(ctx) // 1000}k). "
-                           "Suba agora a gestão para o nível completo, conforme a seção 'Níveis' da skill gestao-de-projeto, "
-                           "e avise o usuário em uma linha.")
+    if precisa_subir(campo(texto, "Nível"), sessoes, compact, max(ctx)) and not st.get("subir"):
+        if bloquear(f"o projeto cresceu ({sessoes} sessões, {compact} compactações, pico {k(max(ctx))}). Suba agora "
+                    "para o nível completo, conforme 'Níveis' da skill gestao-de-projeto, e avise o usuário em uma linha."):
+            st["subir"] = 1
     # PROJETO.md desatualizado: devolve a vez ao Claude uma vez por versão do arquivo
     mtime = int(os.path.getmtime(os.path.join(cwd, "PROJETO.md")))
-    if "decision" not in saida and not dados.get("stop_hook_active") and st.get("lembrete") != mtime:
+    if "decision" not in saida and st.get("lembrete") != mtime:
         alterados = [l for l in git(cwd, "status", "--porcelain").splitlines() if "PROJETO" not in l]
         ult = git(cwd, "log", "-1", "--format=%ct")
         motivo = motivo_desatualizado(mtime, sum(1 for r in rows if len(r) > 1 and int(r[0]) > mtime),
                                       int(ult) if ult.isdigit() else 0, alterados)
-        if motivo:
+        if motivo and bloquear(f"{motivo}. Atualize agora o PROJETO.md (Em andamento, Entregas, Decisões, Pendências, "
+                               "Branches) com edições pontuais e sincronize se o nível for completo. Não fale disso ao usuário."):
             st["lembrete"] = mtime
-            saida["decision"] = "block"
-            saida["reason"] = (f"[gestão] {motivo}. Atualize agora o PROJETO.md (Em andamento, Entregas, Decisões, "
-                               "Pendências, Branches) com edições pontuais e sincronize se o nível for completo. Não fale disso ao usuário.")
     # modo Executar: não para enquanto houver o que avançar sem o usuário (limite por mensagem dele, contra custo sem fim)
     if "decision" not in saida and campo(texto, "Modo").lower().startswith("executar"):
-        ultimo, usuario = ler_fim(dados.get("transcript_path", ""))
-        seg = st.get(sid + ":seg", [usuario, 0])
-        if seg[0] != usuario:
-            seg = [usuario, 0]
-        if PARADA not in ultimo.lower() and seg[1] < SEGUIR_MAX:
+        ultimo = dados.get("last_assistant_message") or t["ultimo"]  # o campo do hook, se houver, é o mais fresco
+        seg = st.get(sid + ":seg", [t["usuario"], 0])
+        if seg[0] != t["usuario"]:
+            seg = [t["usuario"], 0]
+        if not parou(ultimo) and seg[1] < SEGUIR_MAX:
             seg[1] += 1
-            saida["decision"] = "block"
-            saida["reason"] = (f"[gestão] Modo Executar (contexto {ctx[-1] // 1000}k): não pare. Siga para a próxima entrega, "
-                               "pendência ou passo que não depende do usuário, por prioridade, e atualize o PROJETO.md ao concluir "
-                               "cada um. O que depende dele (aval, arquivos, push, publicação, merge que publica, ação irreversível) "
-                               "fica registrado em Pendências/Perguntas e não trava o resto. Se nada mais puder avançar sem ele, "
-                               f"termine com a frase exata '{PARADA}', um resumo curto do que espera dele e o próximo passo clicável (caixa de próximo passo com botões, ou cartão de novo chat se o contexto estiver alto).")
+            bloquear(f"Modo Executar ({k(ctx[-1])}): siga para o próximo item que não depende do usuário, por "
+                     "prioridade, e atualize o PROJETO.md a cada um; o que depende dele vai para Pendências. Se nada mais "
+                     f"avança sem ele, termine com '{PARADA}', resumo e próximo passo clicável.")
         st[sid + ":seg"] = seg
-    json.dump({k: v for k, v in st.items() if k in ("subir", "lembrete") or k.startswith(sid)}, open(st_path, "w"))
+    # guarda as sessões recentes: dois chats abertos no mesmo projeto não apagam o estado um do outro
+    recentes = {r[1] for r in rows[-500:] if len(r) > 1} | {sid}
+    with open(st_path, "w", encoding="utf-8") as f:
+        json.dump({c: v for c, v in st.items() if c in ("subir", "lembrete") or c.split(":")[0] in recentes}, f)
     if saida:
         print(json.dumps(saida, ensure_ascii=False))
 
@@ -263,7 +272,7 @@ def cmd_janela(dados):
     if os.path.isdir(pasta):
         for nome in sorted(os.listdir(pasta))[-30:]:
             if nome.endswith(".jsonl"):
-                bases += ler_transcript(os.path.join(pasta, nome))[1]
+                bases += ler_transcript(os.path.join(pasta, nome))["bases"]
     ideal = janela_ideal(statistics.median(bases) if bases else None)
     json.dump({"ideal": ideal, "amostras": len(bases)}, open(os.path.join(pasta_estado(cwd), "ideal.json"), "w"))
     nova = rede_seguranca(ideal)
@@ -288,12 +297,13 @@ def pasta_logs(cwd):
 def cmd_linha_base(dados):
     cwd = dados.get("cwd") or os.getcwd()
     # pastas extras: onde os chats antigos rodaram (ex.: a pasta-mãe), se não foi na raiz do projeto
-    pastas = [pasta_logs(cwd)] + [pasta_logs(os.path.abspath(p)) for p in sys.argv[2:]]
+    pastas = [pasta_logs(cwd)] + [pasta_logs(os.path.abspath(os.path.join(cwd, p))) for p in sys.argv[2:]]
     ctxs, compact, sessoes = [], 0, 0
     for pasta in filter(os.path.isdir, pastas):
         for nome in os.listdir(pasta):
             if nome.endswith(".jsonl"):
-                c, _, n = ler_transcript(os.path.join(pasta, nome))
+                t = ler_transcript(os.path.join(pasta, nome))
+                c, n = t["ctx"], t["compact"]
                 if c:
                     ctxs += c
                     compact += n
@@ -366,6 +376,8 @@ def teste():
     assert motivo_desatualizado(1000, 25, 0, []) is None                # só conversa: não incomoda
     assert motivo_desatualizado(1000, 5, 1030, ["M a.ts"]) is None      # commit junto da edição
     assert comparar(54_000, 80_000) == "54k (antes da skill: 80k, -32%)" and comparar(54_000, None) == "54k"
+    assert parou("Pronto. Nada a seguir sem você.") and parou("nada mais a seguir sem voce") and not parou("sigo")
+    assert digitado("corrige isso") and not digitado("<task-notification>x") and not digitado("Stop hook feedback: [gestão] x")
     print("ok")
 
 
