@@ -113,6 +113,7 @@ Por que assim (doc oficial dos modelos): a faixa mais barata é a indicada para 
 - Na dúvida entre dois níveis, use o de cima. Errar para baixo custa retrabalho, que sai mais caro que a diferença de preço.
 - Registre a escolha na Entrega ("E7 · novo chat Sonnet/medium") para calibrar: se precisou refazer, suba o nível dessa categoria nas próximas.
 - **Revise o que voltar:** saída de qualquer faixa abaixo do principal passa por uma conferência rápida do chat principal antes de ser dada como pronta (diff, testes, gate). A economia só vale se a qualidade se mantém.
+- **Skills de cada delegação (subagente e novo chat):** antes de delegar, veja se já há skill anotada para o assunto (seção 7; no Leve, em Decisões). Assunto novo: rode `find-skills` uma vez com o assunto da tarefa. Skill já instalada, use direto. Instalar uma nova só com o aceite do usuário, como qualquer download. Cite as escolhidas pelo nome no prompt do subagente ou no resumo do `start_session` ("use a skill X"), porque quem recebe não sabe que elas servem ali. Anote para não buscar de novo o mesmo assunto. Tarefa de leitura simples (faixa mais barata) não precisa de busca.
 - **Não delegue o que é menor que a própria delegação:** tarefa de 1-3 chamadas de ferramenta, faça aqui. Delegar tem custo de contexto inicial.
 
 ## Economia de tokens

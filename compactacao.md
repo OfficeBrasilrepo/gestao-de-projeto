@@ -25,7 +25,7 @@
 | Continuação direta do que está em contexto | **Continuar** | Reler tudo em outro lugar custaria mais. |
 | Contexto alto e tarefa acabou | **`/compact`** no mesmo chat | Equivale a um novo chat, mas mantém o fio. |
 
-**Preparar o novo chat enxuto:** registre a tarefa em Entregas e em "Em andamento", com só o necessário: arquivos que ela toca, decisões que a afetam e skills úteis. Para as skills, use `find-skills` com o assunto da tarefa e anote as escolhidas na seção 7. Depois entregue ao usuário a frase de abertura pronta, por exemplo "Leia PROJETO.md, faça a entrega E7 usando as skills X e Y". Sugira o novo chat em 1 linha.
+**Preparar o novo chat enxuto:** registre a tarefa em Entregas e em "Em andamento", com só o necessário: arquivos que ela toca, decisões que a afetam e skills úteis. Para as skills, siga "Skills de cada delegação" no `SKILL.md` (find-skills por assunto, anotadas na seção 7 ou, no Leve, em Decisões). Depois entregue ao usuário a frase de abertura pronta, por exemplo "Leia PROJETO.md, faça a entrega E7 usando as skills X e Y". Sugira o novo chat em 1 linha.
 
 Modelo e esforço de cada delegação: seção "Delegação" do `SKILL.md`.
 
