@@ -65,7 +65,7 @@ Independentemente do modo:
 - **Pendências:** qualquer comando ou pergunta pode virar pendência. Ao pedir "pendências", liste por prioridade (bloqueantes primeiro) com as perguntas sem resposta. Pendência que impede avanço: pare e pergunte só sobre ela.
 - **Perguntas ignoradas:** registre na seção 5 sem cobrar; o usuário decide depois (descartar, virar pendência, responder).
 - **Design, layout, fluxo** (opções A/B/C, sugestão de melhoria, aprovação visual): `design.md`.
-- **Publicar, mergear, sincronizar:** `git.md`.
+- **Publicar, mergear, sincronizar:** leia `git.md` antes de oferecer ou fazer (inclusive num botão de próximo passo). Com pendência bloqueante aberta, nunca ofereça publicar sem listá-la antes.
 - **Compactação, janela, medição, novo chat × subagente:** `compactacao.md`.
 - **Meta:** ao fechar cada entrega, informe o % da Definição de Pronto. Em 100%, avise e confira pendências e perguntas (o projeto não encerra sozinho).
 

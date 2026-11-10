@@ -5,7 +5,7 @@ README, estrutura clara, `.gitignore`, `.env.example` sem valores reais. Cada en
 
 ## Publicar
 1. Liste as branches abertas e aprovadas (seção 9 do PROJETO.md + `git branch`).
-2. Para cada uma com pendência ligada, mostre como a pendência consta e pergunte: publicar assim mesmo, ou resolver/alterar/aprovar antes.
+2. Para cada uma com pendência ligada, mostre como a pendência consta e pergunte: publicar assim mesmo, ou resolver/alterar/aprovar antes. **Pendência bloqueante aberta, ligada ou não à branch:** não ofereça publicar como pergunta solta ("publico?"). Liste-as primeiro, diga se cada uma afeta o que vai ao ar e só então pergunte. Na dúvida se afeta, trate como afetando.
 3. Mescle uma branch por vez, rodando o gate entre elas.
 4. Branch com migração de banco vai sozinha na vez e sempre pede autorização (pode perder dados).
 5. Atualize a seção Branches e sincronize.
