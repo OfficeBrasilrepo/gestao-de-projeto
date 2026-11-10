@@ -92,7 +92,7 @@ Ao receber um conjunto de tarefas, quebre em partes e, sem esperar o usuário pe
 | Tarefa | Faixa (hoje · custo relativo ao topo) | Esforço |
 |---|---|---|
 | Leitura em volume ou mecânica: varrer pastas, achar usos, listar, renomear em massa, formatar, resumir arquivos e logs | a mais barata (Haiku · ~1/80) | low |
-| Implementação de escopo claro: tela, endpoint, CRUD, teste, bug com causa conhecida | a intermediária (Sonnet · ~1/4) | medium |
+| Implementação de escopo claro: tela, endpoint, CRUD, teste, bug com causa conhecida; teste de tela no navegador (clicar, preencher, conferir), que devolve um resumo e só a captura final, porque capturas pesam muito no contexto | a intermediária (Sonnet · ~1/4) | medium |
 | Implementação com julgamento: refatoração em vários arquivos, integração com API externa, revisão de código, bug sem pista clara | a segunda mais capaz (Opus · ~1/2) | medium |
 | Arquitetura, decisão de rumo, design/UX | a mais capaz (Fable), de preferência o próprio chat principal | medium |
 | Risco ou verificação crítica: casos de borda em código em produção, segurança, dinheiro, migração de dados | a mais capaz | high |
