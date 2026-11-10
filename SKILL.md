@@ -15,6 +15,12 @@ A gestão custa tokens; só vale quando o projeto é grande o bastante. Por isso
 - **Subida automática:** quando houver 2ª sessão, 1ª compactação ou contexto ≥ 100k, o hook `Stop` devolve a vez ao Claude uma única vez com a instrução de subir. Aí: troque `Nível: completo`, complete o modelo, configure o espelho online (`git.md`), registre em Decisões e avise em uma linha. Pergunte só o que não dá para deduzir (Como rodar local), num único AskUserQuestion.
 - Projeto de uma conversa curta (script, ajuste pontual): não crie nada; diga em uma linha que a skill não compensa aqui.
 
+## Pasta certa e novo chat (a skill cuida disso)
+Os hooks e o settings do projeto só valem quando o chat roda na raiz do projeto (onde ficam `PROJETO.md` e `.git`).
+- **Chat aberto numa pasta acima ou ao lado** (ex.: `Downloads` contendo `emissor-nfse`): no app desktop do Claude, use a ferramenta `change_directory` com a raiz do projeto assim que o PROJETO.md existir. O usuário aprova uma vez, e o settings e os hooks do projeto passam a valer neste mesmo chat. Fora do app (CLI), diga em uma linha: `cd <projeto> && claude`.
+- **Novo chat quando compensa** (regra em `compactacao.md`: contexto alto com tarefa concluída, ou trabalho grande e separado): no app desktop, proponha você mesmo com `start_session`, com `cwd` na raiz do projeto e um resumo curto ("Leia PROJETO.md e continue a entrega E7 usando as skills X"). Atualize e sincronize o PROJETO.md antes. O usuário só clica para iniciar. Fora do app, entregue a frase de abertura pronta.
+- Nunca troque de pasta nem abra chat sem o aceite do usuário (as próprias ferramentas pedem). Se ele recusar, siga no chat atual e não insista na mesma sessão.
+
 ## Camadas
 - **`PROJETO.md`** (raiz): só memória. Nunca entra em commit de código, PR, merge ou deploy (vai no `.gitignore`). Sem segredos (senhas, chaves, tokens, dados de clientes): ele é espelhado online.
 - **`PROJETO-ARQUIVO.md`:** concluídos. Leia só quando o usuário pedir.
