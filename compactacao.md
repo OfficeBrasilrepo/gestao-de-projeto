@@ -25,6 +25,7 @@
 | Trabalho grande e separado (módulo novo, refatoração ampla) que precisa de idas e vindas com o usuário | **Novo chat** com `PROJETO.md` | Começa enxuto (~20-30k), sem carregar o histórico; o usuário conduz. Ao terminar, atualize o PROJETO.md para o chat principal ver. |
 | Continuação direta do que está em contexto | **Continuar** | Reler tudo em outro lugar custaria mais. |
 | Contexto alto e tarefa acabou | **`/compact`** no mesmo chat | Equivale a um novo chat, mas mantém o fio. |
+| Contexto abaixo do dobro da base de abertura do chat | **Continuar** | Um chat novo começaria quase no mesmo ponto e sem cache (gravar cache custa mais que ler). O hook só sugere a troca acima disso. |
 
 **Preparar o novo chat enxuto:** registre a tarefa em Entregas e em "Em andamento", com só o necessário: arquivos que ela toca, decisões que a afetam e skills úteis. Para as skills, siga "Skills de cada delegação" no `SKILL.md` (find-skills por assunto, anotadas na seção 7 ou, no Leve, em Decisões). Depois entregue ao usuário a frase de abertura pronta, por exemplo "Leia PROJETO.md, faça a entrega E7 usando as skills X e Y". Sugira o novo chat em 1 linha.
 

@@ -30,8 +30,8 @@ def rede_seguranca(ideal):
 
 
 def ler_transcript(caminho):
-    """Retorna (contextos por turno, bases pós-compactação, nº de compactações)."""
-    ctx, bases, n, depois = [], [], 0, False
+    """Retorna (contextos por turno, bases: início do chat e pós-compactação, nº de compactações)."""
+    ctx, bases, n, depois = [], [], 0, True  # o 1º turno também é base: o custo fixo de abrir um chat
     try:
         f = open(caminho, encoding="utf-8")
     except OSError:
@@ -174,7 +174,7 @@ def cmd_fim(dados):
     texto = projeto(cwd)
     if not texto:
         return
-    ctx, _, compact = ler_transcript(dados.get("transcript_path", ""))
+    ctx, bases, compact = ler_transcript(dados.get("transcript_path", ""))
     if not ctx:
         return
     sid = dados.get("session_id", "?")
@@ -197,7 +197,9 @@ def cmd_fim(dados):
     # devolve a vez ao Claude para ele preparar o novo chat ou o /compact: urgente (3) na hora;
     # senão, uma vez por ciclo, quando já houve aviso e a tarefa terminou (mesmo que o aviso tenha vindo antes)
     urgente = alerta and alerta[0] == 3
-    fim_tarefa = not ativa and st.get(chave, 0) >= 1 and not st.get(chave + ":p")
+    # novo chat só compensa se o contexto já passou do dobro da base (o novo começaria nela de novo, sem cache)
+    fim_tarefa = (not ativa and st.get(chave, 0) >= 1 and not st.get(chave + ":p")
+                  and ctx[-1] >= 2 * (bases[-1] if bases else 0))
     if (urgente or fim_tarefa) and not dados.get("stop_hook_active"):
         st[chave + ":p"] = 1
         info = f"[gestão] contexto {ctx[-1] // 1000}k. "

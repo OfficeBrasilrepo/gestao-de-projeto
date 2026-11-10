@@ -58,7 +58,7 @@ Uma passada só, sem reler o que já está no contexto:
 2. Decida onde e com quem (seção "Delegação": aqui, subagente ou novo chat; faixa e esforço; skills citadas).
 3. Execute ou delegue; revise o que voltar e passe o gate de qualidade.
 4. Atualize o PROJETO.md (Em andamento, Entregas, Pendências) e sincronize se for Completo.
-5. Contexto alto? Novo chat do projeto como cartão; o novo arquiva o antigo. Senão, volte ao 1.
+5. Contexto alto (o hook avisa, e só quando passou do dobro da base de abertura do chat; antes disso um chat novo começaria quase no mesmo ponto, sem cache)? Proponha o novo chat do projeto como cartão, mas **o cartão não é motivo para parar**: volte ao 1 e siga trabalhando. Se o usuário clicar, o novo chat arquiva o antigo. Se ele não estiver, a compactação automática na janela do projeto faz a troca sozinha e o hook `SessionStart` reinjeta o resumo; por isso o PROJETO.md fica sempre em dia.
 6. Só pare com "nada a seguir sem você", o resumo do que espera e o próximo passo clicável.
 
 **O chat nunca termina sem próximo passo clicável** (nos dois modos, enquanto a Definição de Pronto não estiver em 100%): toda parada fecha com a ação seguinte pronta para um clique. No app desktop, use a caixa de próximo passo (uma pergunta curta e 1-2 botões, com a recomendação primeiro). Fora dele, entregue a frase pronta para colar. O botão já segue as regras da skill:
@@ -133,4 +133,4 @@ Por que assim (doc oficial dos modelos): a faixa mais barata é a indicada para 
 - **Não delegue o que é menor que a própria delegação:** tarefa de 1-3 chamadas de ferramenta, faça aqui. Delegar tem custo de contexto inicial.
 
 ## Economia de tokens
-Agrupe tarefas relacionadas e faça de uma vez. Não releia o que já está no contexto. Para trabalho grande e separado, siga a regra "novo chat × subagente" de `compactacao.md`.
+Agrupe tarefas relacionadas e faça de uma vez. Conectores MCP sem uso no projeto pesam em todo turno e em todo chat novo (veja "MCP tools" no painel de contexto): uma vez por projeto, diga em 1 linha quais o projeto não usa e quanto pesam, para o usuário desligar. Não releia o que já está no contexto. Para trabalho grande e separado, siga a regra "novo chat × subagente" de `compactacao.md`.
