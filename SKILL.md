@@ -94,6 +94,8 @@ Ao receber um conjunto de tarefas, quebre em partes e, sem esperar o usuário pe
 | Implementação comum: tela, endpoint, teste, bug localizado | o intermediário (hoje Sonnet) | medium |
 | Difícil ou de risco: arquitetura, refatoração ampla, design/UX, bug sem pista, segurança, dinheiro, migração | o do chat principal (o mais capaz; hoje Fable) | high |
 
+- **Esforço acima de high:** `xhigh` só para o caso raro em que a tarefa difícil já falhou uma vez em `high`, ou envolve segurança, dinheiro ou migração de dados sem volta. `max` nunca por conta própria (é o mais caro); só se o usuário pedir. A delegação nunca usa esforço acima do chat principal.
+- **O modelo e o esforço do chat principal nunca são trocados pela skill:** quem escolhe é o usuário. Se a tarefa pedir mais do que o chat principal tem, avise em 1 linha e sugira que ele suba.
 - **Os níveis são por faixa, não por nome:** quando sair um modelo novo, use a lista de modelos e IDs do ambiente da sessão (sempre traz os mais recentes) para saber qual é o mais barato, o intermediário e o mais capaz. Não use IDs decorados nem os exemplos deste texto.
 - Subagente: passe `model` com o apelido da faixa que a ferramenta Agent aceitar (hoje `haiku`, `sonnet`…; apelidos apontam sempre para a versão mais nova) e `effort` (a skill autoriza escolher o esforço).
 - Novo chat no app: passe `model` com o ID completo tirado da lista do ambiente e `effort` no `start_session`. O app só aceita modelo igual ou mais barato que o do chat atual, e esforço igual ou menor. Por isso o chat principal deve estar no modelo mais forte que o projeto precisa.
