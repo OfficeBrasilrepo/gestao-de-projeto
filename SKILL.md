@@ -38,7 +38,7 @@ Os hooks e o settings do projeto só valem quando o chat roda na raiz do projeto
 4. Projeto sem testes: a primeira entrega é criar um gate mínimo (prioridade alta).
 5. **Uso de partida (só na adoção de projeto existente; projeto novo não tem "antes"):** peça ao usuário para rodar `/usage` e colar o print ou os números (custo, leitura e gravação de cache, saída, cache hit, linhas alteradas) antes de começar o trabalho. Registre em Decisões como "linha de base de uso" com a data e o modelo, e calcule o custo por linha alterada. Se ele não quiser, siga sem.
 
-Mudar depois: `/gestao-de-projeto config` (tudo), `/gestao-de-projeto config modo|local|nível` (uma), ou texto livre.
+Mudar depois: `/gestao-de-projeto config` (tudo), `/gestao-de-projeto config modo|local|nível|main|arquivar|delegação` (uma), ou texto livre.
 
 ## Adotar num projeto existente ("usar a skill neste projeto")
 Uma passada só, sem reler o que já está no contexto:
