@@ -52,6 +52,11 @@ Uma passada só, sem reler o que já está no contexto:
 - **Perguntar antes:** proponha os passos, espere aprovação, execute.
 - **Executar:** execute sem interromper e sem parar; dúvidas viram "Perguntas sem resposta" com a suposição adotada. O projeto anda mesmo com o usuário longe do PC: ao terminar uma parte, siga para a próxima que não depende dele, por prioridade. O que depende dele (aval, arquivos, push, publicação, merge que publica, irreversível) fica registrado e não trava o resto. Só encerre quando nada mais puder avançar sem ele, com a frase exata "nada a seguir sem você" e um resumo curto do que espera. O hook `Stop` devolve a vez enquanto essa frase não vier (até 25 vezes por mensagem do usuário, contra custo sem fim).
 
+**O chat nunca termina sem próximo passo clicável** (nos dois modos, enquanto a Definição de Pronto não estiver em 100%): toda parada fecha com a ação seguinte pronta para um clique. No app desktop, use a caixa de próximo passo (uma pergunta curta e 1-2 botões, com a recomendação primeiro). Fora dele, entregue a frase pronta para colar. O botão já segue as regras da skill:
+- decisão do usuário (publicar, aprovar): botões com as opções ("Sim, publicar 3.6.0" / "Só enviar e mesclar");
+- próxima entrega que não depende dele: botão "Seguir para E8" com o plano de 1 linha (onde, faixa e esforço, conforme "Delegação");
+- contexto alto (aviso do hook ou ≥ ponto ideal): o próximo passo vai num **novo chat do projeto** (`start_session` com cwd na raiz, resumo do próximo passo e modelo/esforço pela "Delegação"), proposto como cartão, depois de atualizar e sincronizar o PROJETO.md. Não peça só "rode /compact": o cartão é um clique e já retoma o trabalho. `/compact` fica como segunda opção, se o próximo passo depender muito do contexto atual.
+
 Independentemente do modo:
 - **Reversível** (código numa branch, testes, refatoração): segue a chave.
 - **Merge na `main`:** se a `main` publica sozinha em produção (ex.: Vercel), sempre pede aprovação, com rollback pronto (`git revert -m 1` / rollback do deploy). Se não publica, segue a chave, mas só com o gate verde, sem migração de banco e sem pendência ligada à branch.

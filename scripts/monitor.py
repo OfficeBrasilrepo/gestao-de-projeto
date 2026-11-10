@@ -203,7 +203,9 @@ def cmd_fim(dados):
         info = f"[gestão] contexto {ctx[-1] // 1000}k. "
         saida["decision"] = "block"
         saida["reason"] = info + (
-            "Atualize Em andamento, sincronize e peça ao usuário em 1 linha para rodar /compact agora." if urgente else
+            "Contexto perto da compactação automática. Atualize Em andamento, sincronize e proponha já o novo chat do projeto "
+            "(start_session com cwd na raiz, resumo do próximo passo, modelo e esforço pela Delegação) como cartão clicável; "
+            "/compact só como segunda opção." if urgente else
             "Tarefa concluída com contexto alto. Atualize e sincronize o PROJETO.md e, conforme 'Pasta certa e novo chat' "
             "da skill gestao-de-projeto, proponha ao usuário em 1 linha: novo chat (start_session com cwd na raiz, modelo "
             "e esforço da próxima tarefa) se a próxima tarefa for separada, ou /compact se for continuação.")
@@ -242,7 +244,7 @@ def cmd_fim(dados):
                                "pendência ou passo que não depende do usuário, por prioridade, e atualize o PROJETO.md ao concluir "
                                "cada um. O que depende dele (aval, arquivos, push, publicação, merge que publica, ação irreversível) "
                                "fica registrado em Pendências/Perguntas e não trava o resto. Se nada mais puder avançar sem ele, "
-                               f"termine com a frase exata '{PARADA}' e um resumo curto do que espera dele.")
+                               f"termine com a frase exata '{PARADA}', um resumo curto do que espera dele e o próximo passo clicável (caixa de próximo passo com botões, ou cartão de novo chat se o contexto estiver alto).")
         st[sid + ":seg"] = seg
     json.dump({k: v for k, v in st.items() if k in ("subir", "lembrete") or k.startswith(sid)}, open(st_path, "w"))
     if saida:
