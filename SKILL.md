@@ -31,7 +31,7 @@ Os hooks e o settings do projeto só valem quando o chat roda na raiz do projeto
 ## Início / retomada
 1. Se o hook `SessionStart` já injetou o resumo, use-o; não releia o arquivo inteiro.
 2. Senão leia `PROJETO.md`. Ausente: tente `bash scripts/restaurar-estado.sh`; sem espelho, é projeto novo → crie a partir de `modelo-PROJETO.md` no nível adequado.
-3. Configuração ausente: **um único** AskUserQuestion. Leve pergunta só o Modo; Completo pergunta também Como rodar local. Com configuração gravada, não pergunte de novo. A compactação é sempre gerida pela skill (é o motivo dela existir); não há opção manual.
+3. Configuração ausente: **um único** AskUserQuestion. Leve pergunta só o Modo; Completo pergunta também Como rodar local. Com configuração gravada, não pergunte de novo. A compactação é sempre gerida pela skill (é o motivo dela existir); não há opção manual. Grave também na Configuração o "Chat principal" (modelo atual da sessão; se não for o mais forte disponível, avise) e a linha de "Delegação" do modelo, e mostre as duas ao usuário na confirmação.
 4. Projeto sem testes: a primeira entrega é criar um gate mínimo (prioridade alta).
 5. **Uso de partida (só na 1ª vez, projeto novo ou existente):** peça ao usuário para rodar `/usage` e colar o print ou os números (custo, leitura e gravação de cache, saída, cache hit, linhas alteradas) antes de começar o trabalho. Registre em Decisões como "linha de base de uso" com a data e o modelo, e calcule o custo por linha alterada. Se ele não quiser, siga sem.
 
