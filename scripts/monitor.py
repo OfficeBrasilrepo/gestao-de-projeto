@@ -227,9 +227,10 @@ def pasta_logs(cwd):
 
 def cmd_linha_base(dados):
     cwd = dados.get("cwd") or os.getcwd()
-    pasta = pasta_logs(cwd)
+    # pastas extras: onde os chats antigos rodaram (ex.: a pasta-mãe), se não foi na raiz do projeto
+    pastas = [pasta_logs(cwd)] + [pasta_logs(os.path.abspath(p)) for p in sys.argv[2:]]
     ctxs, compact, sessoes = [], 0, 0
-    if os.path.isdir(pasta):
+    for pasta in filter(os.path.isdir, pastas):
         for nome in os.listdir(pasta):
             if nome.endswith(".jsonl"):
                 c, _, n = ler_transcript(os.path.join(pasta, nome))
