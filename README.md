@@ -1,6 +1,6 @@
 # gestao-de-projeto (skill do Claude Code)
 
-Memória viva do projeto (`PROJETO.md`): decisões, entregas, pendências, branches, sincronização online e compactação de contexto no momento certo.
+Memória viva do projeto (`PROJETO.md`): decisões, entregas, pendências, branches, sincronização online, compactação de contexto no momento certo e delegação de cada tarefa ao modelo e esforço adequados (entre os disponíveis no seu plano).
 
 ## Instalar em outro computador
 Requisitos: Claude Code, Git (no Windows, Git Bash) e Python 3.
