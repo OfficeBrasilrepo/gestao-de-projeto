@@ -53,6 +53,14 @@ Uma passada só, sem reler o que já está no contexto:
 - **Perguntar antes:** proponha os passos, espere aprovação, execute.
 - **Executar:** execute sem interromper e sem parar; dúvidas viram "Perguntas sem resposta" com a suposição adotada. O projeto anda mesmo com o usuário longe do PC: ao terminar uma parte, siga para a próxima que não depende dele, por prioridade. O que depende dele (aval, arquivos, push, publicação, merge que publica, irreversível) fica registrado e não trava o resto. Só encerre quando nada mais puder avançar sem ele, com a frase exata "nada a seguir sem você" e um resumo curto do que espera. O hook `Stop` devolve a vez enquanto essa frase não vier (até 25 vezes por mensagem do usuário, contra custo sem fim).
 
+**Ciclo do modo Executar** (o objetivo da skill: o projeto anda sozinho, gastando o mínimo, sem perder qualidade):
+1. Pegue o próximo item que não depende do usuário (Entregas e Pendências, por prioridade).
+2. Decida onde e com quem (seção "Delegação": aqui, subagente ou novo chat; faixa e esforço; skills citadas).
+3. Execute ou delegue; revise o que voltar e passe o gate de qualidade.
+4. Atualize o PROJETO.md (Em andamento, Entregas, Pendências) e sincronize se for Completo.
+5. Contexto alto? Novo chat do projeto como cartão; o novo arquiva o antigo. Senão, volte ao 1.
+6. Só pare com "nada a seguir sem você", o resumo do que espera e o próximo passo clicável.
+
 **O chat nunca termina sem próximo passo clicável** (nos dois modos, enquanto a Definição de Pronto não estiver em 100%): toda parada fecha com a ação seguinte pronta para um clique. No app desktop, use a caixa de próximo passo (uma pergunta curta e 1-2 botões, com a recomendação primeiro). Fora dele, entregue a frase pronta para colar. O botão já segue as regras da skill:
 - decisão do usuário (publicar, aprovar): botões com as opções ("Sim, publicar 3.6.0" / "Só enviar e mesclar");
 - próxima entrega que não depende dele: botão "Seguir para E8" com o plano de 1 linha (onde, faixa e esforço, conforme "Delegação");
