@@ -90,12 +90,13 @@ Ao receber um conjunto de tarefas, quebre em partes e, sem esperar o usuário pe
 
 | Tarefa | Modelo | Esforço |
 |---|---|---|
-| Mecânica ou só leitura: buscar, listar, renomear, formatar, resumir arquivos | Haiku | low |
-| Implementação comum: tela, endpoint, teste, bug localizado | Sonnet | medium |
-| Difícil ou de risco: arquitetura, refatoração ampla, design/UX, bug sem pista, segurança, dinheiro, migração | o modelo atual (Opus/Fable) | high |
+| Mecânica ou só leitura: buscar, listar, renomear, formatar, resumir arquivos | o mais barato (hoje Haiku) | low |
+| Implementação comum: tela, endpoint, teste, bug localizado | o intermediário (hoje Sonnet) | medium |
+| Difícil ou de risco: arquitetura, refatoração ampla, design/UX, bug sem pista, segurança, dinheiro, migração | o do chat principal (o mais capaz; hoje Fable) | high |
 
-- Subagente: passe `model` (`haiku`, `sonnet`…) e `effort` na ferramenta Agent (a skill autoriza escolher o esforço).
-- Novo chat no app: passe `model` (ID completo, ex.: `claude-sonnet-5-5`) e `effort` no `start_session`. O app só aceita modelo igual ou mais barato que o do chat atual, e esforço igual ou menor. Por isso o chat principal deve estar no modelo mais forte que o projeto precisa.
+- **Os níveis são por faixa, não por nome:** quando sair um modelo novo, use a lista de modelos e IDs do ambiente da sessão (sempre traz os mais recentes) para saber qual é o mais barato, o intermediário e o mais capaz. Não use IDs decorados nem os exemplos deste texto.
+- Subagente: passe `model` com o apelido da faixa que a ferramenta Agent aceitar (hoje `haiku`, `sonnet`…; apelidos apontam sempre para a versão mais nova) e `effort` (a skill autoriza escolher o esforço).
+- Novo chat no app: passe `model` com o ID completo tirado da lista do ambiente e `effort` no `start_session`. O app só aceita modelo igual ou mais barato que o do chat atual, e esforço igual ou menor. Por isso o chat principal deve estar no modelo mais forte que o projeto precisa.
 - Na dúvida entre dois níveis, use o de cima. Errar para baixo custa retrabalho, que sai mais caro que a diferença de preço.
 - Registre a escolha na Entrega ("E7 · novo chat Sonnet/medium") para calibrar: se precisou refazer, suba o nível dessa categoria nas próximas.
 - **Revise o que voltar:** saída de Haiku/Sonnet passa por uma conferência rápida do chat principal antes de ser dada como pronta (diff, testes, gate). A economia só vale se a qualidade se mantém.
