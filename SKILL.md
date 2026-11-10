@@ -31,7 +31,7 @@ Os hooks e o settings do projeto só valem quando o chat roda na raiz do projeto
 - **`CLAUDE.md` do projeto (fallback):** "Leia PROJETO.md no início da sessão e após compactação (se não existir, restaure da branch projeto-estado) e siga a skill gestao-de-projeto."
 
 ## Início / retomada
-1. Se o hook `SessionStart` já injetou o resumo, use-o; não releia o arquivo inteiro.
+1. Se o hook `SessionStart` já injetou o resumo, use-o; não releia o arquivo inteiro. Na primeira resposta, mostre ao usuário em 1-2 linhas a tarefa em andamento e as pendências bloqueantes (se houver), sem esperar ele pedir.
 2. Senão leia `PROJETO.md`. Ausente: tente `bash ~/.claude/skills/gestao-de-projeto/scripts/restaurar-estado.sh`; sem espelho, é projeto novo → crie a partir de `modelo-PROJETO.md` no nível adequado. Ponha `PROJETO.md`, `PROJETO-ARQUIVO.md` e `.claude/gestao/` no `.gitignore` e a linha de fallback no `CLAUDE.md`.
 3. Configuração ausente: **um único** AskUserQuestion. Leve pergunta só o Modo; Completo pergunta também Como rodar local. Com configuração gravada, não pergunte de novo. A compactação é sempre gerida pela skill (é o motivo dela existir); não há opção manual. Grave também na Configuração o "Chat principal" (modelo atual da sessão; se não for o mais forte disponível, avise) e a linha de "Delegação" do modelo, e mostre as duas ao usuário na confirmação.
 4. Projeto sem testes: a primeira entrega é criar um gate mínimo (prioridade alta).
@@ -67,7 +67,7 @@ Independentemente do modo:
 - **Design, layout, fluxo** (opções A/B/C, sugestão de melhoria, aprovação visual): `design.md`.
 - **Publicar, mergear, sincronizar:** leia `git.md` antes de oferecer ou fazer (inclusive num botão de próximo passo). Com pendência bloqueante aberta, nunca ofereça publicar sem listá-la antes.
 - **Compactação, janela, medição, novo chat × subagente:** `compactacao.md`.
-- **Meta:** ao fechar cada entrega, informe o % da Definição de Pronto. Em 100%, avise e confira pendências e perguntas (o projeto não encerra sozinho).
+- **Meta:** ao fechar cada entrega, informe o % da Definição de Pronto e quantas pendências bloqueantes restam. Em 100%, avise e confira pendências e perguntas (o projeto não encerra sozinho).
 
 ## Status e medição
 - "status": `python ~/.claude/skills/gestao-de-projeto/scripts/monitor.py status < /dev/null` → nível, % pronto, pendências bloqueantes, contexto atual, tarefa. Repasse a linha.
