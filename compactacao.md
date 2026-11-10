@@ -27,6 +27,22 @@
 
 **Preparar o novo chat enxuto:** registre a tarefa em Entregas e em "Em andamento", com só o necessário: arquivos que ela toca, decisões que a afetam e skills úteis. Para as skills, use `find-skills` com o assunto da tarefa e anote as escolhidas na seção 7. Depois entregue ao usuário a frase de abertura pronta, por exemplo "Leia PROJETO.md, faça a entrega E7 usando as skills X e Y". Sugira o novo chat em 1 linha.
 
+### Modelo e esforço por tarefa (vale para subagente e para novo chat)
+Antes de delegar, decida nesta ordem, em 1 linha para o usuário ("subagente Haiku/baixo: só leitura"):
+1. **Onde:** subagente se o resultado cabe num resumo e não precisa do usuário; novo chat se precisa de idas e vindas ou é grande e separado; continuar aqui se depende do que já está no contexto.
+2. **Modelo e esforço** pela tarefa, não pelo hábito:
+
+| Tarefa | Modelo | Esforço |
+|---|---|---|
+| Mecânica ou só leitura: buscar, listar, renomear, formatar, resumir arquivos | Haiku | low |
+| Implementação comum: tela, endpoint, teste, bug localizado | Sonnet | medium |
+| Difícil ou de risco: arquitetura, refatoração ampla, design/UX, bug sem pista, segurança, dinheiro, migração | o modelo atual (Opus/Fable) | high |
+
+- Subagente: passe `model` e `effort` na ferramenta Agent (a skill autoriza escolher o esforço).
+- Novo chat no app: passe `model` e `effort` no `start_session`. O app só aceita modelo igual ou mais barato que o do chat atual, e esforço igual ou menor. Por isso o chat principal deve estar no modelo mais forte que o projeto precisa.
+- Na dúvida entre dois níveis, use o de cima. Errar para baixo custa retrabalho, que sai mais caro que a diferença de preço.
+- Registre a escolha na Entrega ("E7 · novo chat Sonnet/medium") para calibrar: se precisou refazer, suba o nível dessa categoria nas próximas.
+
 ## Hooks (peça permissão e mostre o JSON exato; faça merge no settings existente)
 ```json
 {
