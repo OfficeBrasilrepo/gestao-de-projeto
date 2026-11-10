@@ -17,7 +17,7 @@ Sempre como opinião. Descartada → registre como descartada em Decisões; a br
 Critérios: hierarquia visual, espaçamento, consistência, acessibilidade, mobile.
 
 ## Aprovação visual
-- **Mudança estética:** original e alterado lado a lado numa imagem só, desktop e mobile. Gere com `node scripts/comparar-visual.mjs` (Playwright). As capturas vão para uma pasta fora do git (`../.capturas-<projeto>/`) e não passam pelo contexto; olhe só a imagem final da comparação.
+- **Mudança estética:** original e alterado lado a lado numa imagem só, desktop e mobile. Gere com `comparar-visual.mjs` (Playwright, uso abaixo). As capturas vão para uma pasta fora do git (`../.capturas-<projeto>/`) e não passam pelo contexto; olhe só a imagem final da comparação.
 - **Decisão escrita:** diff enxuto "antes → depois" em 1-3 linhas.
 - Playwright baixa o Chromium: peça permissão antes da primeira instalação (`npx playwright install chromium`). Rotas com login usam a conta de teste do `.env`.
 

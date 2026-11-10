@@ -15,7 +15,7 @@
    - contexto ≥ 90% do limite automático → salvar o estado e compactar já;
    - uma vez por faixa e por ciclo de compactação.
    Antes do usuário compactar, garanta "Em andamento" atualizado e o estado sincronizado.
-4. **Medição:** cada resposta grava `timestamp, sessão, contexto, compactações` em `.claude/gestao/medicao.csv` (~100 ms, algumas dezenas de bytes por resposta). `python scripts/monitor.py resumo < /dev/null` mostra turnos, contexto médio por turno, pico, ponto ideal e janela. O contexto médio por turno é o principal indicador de custo: cada turno relê o contexto inteiro, e com cache isso custa ~10%, mas soma.
+4. **Medição:** cada resposta grava `timestamp, sessão, contexto, compactações` em `.claude/gestao/medicao.csv` (~100 ms, algumas dezenas de bytes por resposta). `python ~/.claude/skills/gestao-de-projeto/scripts/monitor.py resumo < /dev/null` mostra turnos, contexto médio por turno, pico, ponto ideal e janela. O contexto médio por turno é o principal indicador de custo: cada turno relê o contexto inteiro, e com cache isso custa ~10%, mas soma.
 
 ## Novo chat × subagente × continuar
 | Situação | Melhor | Por quê |

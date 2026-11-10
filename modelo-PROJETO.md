@@ -1,6 +1,6 @@
 # PROJETO — <nome do app>
 > Estado vivo do projeto (skill `gestao-de-projeto`). Não vai em commit de código; espelho na branch `projeto-estado`. Sem segredos.
-> Mudar configuração: `/gestao-de-projeto config` (tudo) · `/gestao-de-projeto config modo|local|nível` (uma) · ou texto livre ("mudar modo para Planejado").
+> Mudar configuração: `/gestao-de-projeto config` (tudo) · `/gestao-de-projeto config modo|local|nível` (uma) · ou texto livre ("mudar modo para Perguntar antes").
 
 ## 1. Visão geral
 **Objetivo:** <uma frase>

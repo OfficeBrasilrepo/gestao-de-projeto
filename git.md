@@ -20,6 +20,6 @@ Se a main publica automaticamente em produção, avise antes e deixe pronto o ca
 **Restaurar:** `bash ~/.claude/skills/gestao-de-projeto/scripts/restaurar-estado.sh`.
 - Sem arquivo local: restaura.
 - Local igual ao remoto: nada a fazer.
-- Local diferente do remoto: o script **não sobrescreve** e sai com código 3 mostrando as diferenças. Resuma para o usuário e pergunte qual vale (inclusive no Autônomo). Para aceitar o remoto: `restaurar-estado.sh --forcar`.
+- Local diferente do remoto: o script **não sobrescreve** e sai com código 3 mostrando as diferenças. Resuma para o usuário e pergunte qual vale (inclusive no modo Executar). Para aceitar o remoto: `restaurar-estado.sh --forcar`.
 
 **Sem remoto git:** avise que o estado só existe nesta máquina e ofereça cópia no Drive. Se o push falhar, registre a pendência "sincronizar estado".
