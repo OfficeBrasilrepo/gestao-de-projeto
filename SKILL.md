@@ -27,6 +27,7 @@ A gestão custa tokens; só vale quando o projeto é grande o bastante. Por isso
 2. Senão leia `PROJETO.md`. Ausente: tente `bash scripts/restaurar-estado.sh`; sem espelho, é projeto novo → crie a partir de `modelo-PROJETO.md` no nível adequado.
 3. Configuração ausente: **um único** AskUserQuestion. Leve pergunta só o Modo; Completo pergunta também Como rodar local. Com configuração gravada, não pergunte de novo. A compactação é sempre gerida pela skill (é o motivo dela existir); não há opção manual.
 4. Projeto sem testes: a primeira entrega é criar um gate mínimo (prioridade alta).
+5. **Uso de partida (só na 1ª vez, projeto novo ou existente):** peça ao usuário para rodar `/usage` e colar o print ou os números (custo, leitura e gravação de cache, saída, cache hit, linhas alteradas) antes de começar o trabalho. Registre em Decisões como "linha de base de uso" com a data e o modelo, e calcule o custo por linha alterada. Se ele não quiser, siga sem.
 
 Mudar depois: `/gestao-de-projeto config` (tudo), `/gestao-de-projeto config modo|local|nível` (uma), ou texto livre.
 
@@ -36,7 +37,7 @@ Uma passada só, sem reler o que já está no contexto:
 2. **Rascunho do PROJETO.md** no nível certo (repositório com histórico longo ou muitos arquivos já entra no Completo): Objetivo e Stack deduzidos, branches abertas na seção 9, TODOs como pendências com prioridade sugerida, decisões visíveis no histórico (ex.: troca de biblioteca) com motivo "inferido".
 3. **Confirmação única:** mostre o rascunho resumido e faça um AskUserQuestion com Modo, Como rodar local e "o que está em andamento agora". Marque como "inferido" o que não foi confirmado.
 4. **Instalação:** `.gitignore`, linha no CLAUDE.md, hooks (uma permissão), espelho online e o primeiro sync. Se não houver testes, a entrega E1 é o gate mínimo.
-5. **Linha de base:** rode `python scripts/monitor.py linha-base < /dev/null` uma vez, antes de qualquer trabalho com a skill. Ela mede os chats anteriores do projeto para comparar depois.
+5. **Linha de base:** rode `python scripts/monitor.py linha-base < /dev/null` uma vez, antes de qualquer trabalho com a skill. Ela mede os chats anteriores do projeto para comparar depois. Junto, peça o `/usage` de partida (passo 5 do Início).
 
 ## Modo: uma chave, o risco decide o resto
 - **Perguntar antes:** proponha os passos, espere aprovação, execute.
