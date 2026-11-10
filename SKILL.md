@@ -88,12 +88,16 @@ Ao receber um conjunto de tarefas, quebre em partes e, sem esperar o usuário pe
 1. **Onde:** subagente se o resultado cabe num resumo e não precisa do usuário; novo chat se precisa de idas e vindas ou é grande e separado; continuar aqui se depende do que já está no contexto.
 2. **Modelo e esforço** pela tarefa, não pelo hábito:
 
-| Tarefa | Modelo | Esforço |
+| Tarefa | Faixa (hoje · custo relativo ao topo) | Esforço |
 |---|---|---|
-| Mecânica ou só leitura: buscar, listar, renomear, formatar, resumir arquivos | o mais barato (hoje Haiku) | low |
-| Implementação comum: tela, endpoint, teste, bug localizado | o intermediário (hoje Sonnet) | medium |
-| Julgamento: arquitetura, refatoração ampla, design/UX | o do chat principal (o mais capaz; hoje Fable) | medium (padrão dos modelos atuais, já calibrado para isso) |
-| Risco ou verificação crítica: bug em código existente com casos de borda, bug sem pista, segurança, dinheiro, migração | o do chat principal | high |
+| Leitura em volume ou mecânica: varrer pastas, achar usos, listar, renomear em massa, formatar, resumir arquivos e logs | a mais barata (Haiku · ~1/80) | low |
+| Implementação de escopo claro: tela, endpoint, CRUD, teste, bug com causa conhecida | a intermediária (Sonnet · ~1/4) | medium |
+| Implementação com julgamento: refatoração em vários arquivos, integração com API externa, revisão de código, bug sem pista clara | a segunda mais capaz (Opus · ~1/2) | medium |
+| Arquitetura, decisão de rumo, design/UX | a mais capaz (Fable), de preferência o próprio chat principal | medium |
+| Risco ou verificação crítica: casos de borda em código em produção, segurança, dinheiro, migração de dados | a mais capaz | high |
+
+Por que assim (doc oficial dos modelos): a faixa mais barata é a indicada para subtarefas de leitura pesada; a intermediária é a de código e agentes do dia a dia; a segunda mais capaz entrega quase o raciocínio do topo pela metade do preço; o topo é para raciocínio longo e difícil. Os custos relativos vêm do preço de API e servem só como proporção (no plano por assinatura pesam do mesmo jeito no limite de uso).
+- **Contexto compartilhado pesa mais que o preço:** cache é por modelo e um subagente começa do zero. Se a tarefa depende de muito do que já está no contexto, continuar aqui no principal (mesmo em esforço menor) sai mais barato que delegar para uma faixa menor que teria de reler tudo. Compare o custo da tarefa concluída, não da chamada.
 
 - **Esforço acima de high:** `xhigh` só para o caso raro em que a tarefa difícil já falhou uma vez em `high`, ou envolve segurança, dinheiro ou migração de dados sem volta. `max` nunca por conta própria (é o mais caro); só se o usuário pedir. A delegação nunca usa esforço acima do chat principal.
 - **O modelo e o esforço do chat principal nunca são trocados pela skill:** quem escolhe é o usuário, no seletor de modelo do app (esforço: Baixo=low, Médio=medium, Alto=high, Extra=xhigh, Máx=max). O usuário pode começar mais barato; a skill recomenda quando mudar, em 1 linha, com o alvo exato ("para esta refatoração, suba o chat principal para Fable · Alto"):
@@ -102,12 +106,12 @@ Ao receber um conjunto de tarefas, quebre em partes e, sem esperar o usuário pe
   - recomende só o necessário. Os níveis são calibrados por modelo, e nos modelos atuais (Fable/Opus/Sonnet/Haiku 5.x) **Médio é o padrão oficial** e cobre o dia a dia, arquitetura incluída. Alto só para a linha "risco ou verificação crítica" da tabela; Extra só nos casos raros acima; Máx nunca por iniciativa própria;
   - **Ultracode** não é nível de esforço: é um interruptor em que o próprio Claude Code monta fluxos com vários agentes para tarefas grandes. Ele se sobrepõe à delegação desta skill e tende a gastar bem mais, então não recomende. Exceção: tarefa muito grande e paralelizável (ex.: migração em dezenas de arquivos independentes). Nesse caso sugira-o como opção, avisando que consome mais, e desligue (`/effort ultracode off`) ao terminar.
   Registre a recomendação aceita ou recusada em Decisões só se mudar o rumo do projeto.
-- **Os níveis são por faixa, não por nome:** quando sair um modelo novo, use a lista de modelos e IDs do ambiente da sessão (sempre traz os mais recentes) para saber qual é o mais barato, o intermediário e o mais capaz. Não use IDs decorados nem os exemplos deste texto.
-- Subagente: passe `model` com o apelido da faixa que a ferramenta Agent aceitar (hoje `haiku`, `sonnet`…; apelidos apontam sempre para a versão mais nova) e `effort` (a skill autoriza escolher o esforço).
+- **Os níveis são por faixa, não por nome:** quando sair um modelo novo, use a lista de modelos e IDs do ambiente da sessão (sempre traz os mais recentes) para saber qual é o mais barato, o intermediário, o segundo mais capaz e o mais capaz (se a família tiver só três, a linha do "segundo" vai para o mais capaz). Não use IDs decorados nem os exemplos deste texto.
+- Subagente: passe `model` com o apelido da faixa que a ferramenta Agent aceitar (hoje `haiku`, `sonnet`, `opus`, `fable`; apelidos apontam sempre para a versão mais nova) e `effort` (a skill autoriza escolher o esforço).
 - Novo chat no app: passe `model` com o ID completo tirado da lista do ambiente e `effort` no `start_session`. O app só aceita modelo igual ou mais barato que o do chat atual, e esforço igual ou menor. Por isso o chat principal deve estar no modelo mais forte que o projeto precisa.
 - Na dúvida entre dois níveis, use o de cima. Errar para baixo custa retrabalho, que sai mais caro que a diferença de preço.
 - Registre a escolha na Entrega ("E7 · novo chat Sonnet/medium") para calibrar: se precisou refazer, suba o nível dessa categoria nas próximas.
-- **Revise o que voltar:** saída de Haiku/Sonnet passa por uma conferência rápida do chat principal antes de ser dada como pronta (diff, testes, gate). A economia só vale se a qualidade se mantém.
+- **Revise o que voltar:** saída de qualquer faixa abaixo do principal passa por uma conferência rápida do chat principal antes de ser dada como pronta (diff, testes, gate). A economia só vale se a qualidade se mantém.
 - **Não delegue o que é menor que a própria delegação:** tarefa de 1-3 chamadas de ferramenta, faça aqui. Delegar tem custo de contexto inicial.
 
 ## Economia de tokens
