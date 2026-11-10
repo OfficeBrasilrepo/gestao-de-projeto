@@ -62,6 +62,7 @@ Independentemente do modo:
 ## Status e medição
 - "status": `python scripts/monitor.py status < /dev/null` → nível, % pronto, pendências bloqueantes, contexto atual, tarefa. Repasse a linha.
 - "a skill está economizando?": `python scripts/monitor.py resumo < /dev/null` → contexto médio por resposta agora × antes da skill. Diga com franqueza que a comparação é aproximada (trabalhos diferentes) e só vale após ~1 semana ou ~200 respostas.
+  Procure também no PROJETO.md (grep "linha de base") um registro de uso do painel do Claude Code (custo, leitura de cache, linhas alteradas). Se houver, peça ao usuário o print atual do painel de Uso e compare custo por linha alterada e leitura de cache por sessão, lado a lado com a saída do `resumo`.
 
 ## Atualização do PROJETO.md
 - **Rede contra arquivo velho:** se houver commit depois da última edição do PROJETO.md, ou 20+ respostas com arquivos alterados sem editá-lo, o hook `Stop` devolve a vez com a ordem de atualizar. Faça a atualização em silêncio e continue.
