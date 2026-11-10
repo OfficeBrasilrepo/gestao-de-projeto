@@ -4,6 +4,8 @@
 README, estrutura clara, `.gitignore`, `.env.example` sem valores reais. Cada entrega numa branch própria (`feat/`, `fix/`, `chore/`) com commits claros. Aprovada, a branch fica aguardando (status "aprovada" na seção Branches).
 
 ## Publicar
+**Ritmo:** agrupe entregas prontas e publique por pacote. Cada publicação custa uma rodada de gate, pacote e envio, além do trabalho de atualizar do lado do usuário final. Publique na hora só correção de problema em produção, ou o que o usuário precisa já. Pacote grande demais também é ruim: se algo quebrar, é mais difícil achar a causa e voltar atrás. Na recomendação, diga em 1 linha se vale publicar agora ou esperar juntar mais.
+
 1. Liste as branches abertas e aprovadas (seção 9 do PROJETO.md + `git branch`).
 2. Para cada uma com pendência ligada, mostre como a pendência consta e pergunte: publicar assim mesmo, ou resolver/alterar/aprovar antes. **Pendência bloqueante aberta, ligada ou não à branch:** não ofereça publicar como pergunta solta ("publico?"). Liste-as primeiro, diga se cada uma afeta o que vai ao ar e só então pergunte. Na dúvida se afeta, trate como afetando.
 3. Mescle uma branch por vez, rodando o gate entre elas.
