@@ -48,6 +48,8 @@ def ler_transcript(caminho):
                 d = json.loads(linha)
             except ValueError:
                 continue
+            if not isinstance(d, dict) or d.get("isSidechain"):  # linhas de subagente não são o chat principal
+                continue
             if d.get("type") == "system" and d.get("subtype") == "compact_boundary":
                 r["compact"] += 1
                 depois = True
@@ -57,7 +59,7 @@ def ler_transcript(caminho):
                 continue
             if d.get("type") == "assistant" and m.get("usage"):
                 u = m["usage"]
-                c = u.get("input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+                c = sum(u.get(x) or 0 for x in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
                 if not r["ctx"] or c != r["ctx"][-1]:
                     r["ctx"].append(c)
                     r["abertura"] = r["abertura"] or c
@@ -71,7 +73,7 @@ def ler_transcript(caminho):
                 for b in c:
                     if isinstance(b, dict) and b.get("type") == "tool_use":
                         delegacao(b, r)
-            textos = [c] if isinstance(c, str) else [b.get("text", "") for b in c or [] if isinstance(b, dict) and b.get("type") == "text"]
+            textos = [c] if isinstance(c, str) else [b.get("text") or "" for b in c or [] if isinstance(b, dict) and b.get("type") == "text"]
             if not textos:
                 continue
             if d.get("type") == "assistant":
@@ -94,7 +96,7 @@ def delegacao(b, r):
 
 def fechamento(antes, agora, n_ferr, n_deleg, delegs):
     """Texto do fechamento de entrega ou None. antes/agora = campo Tarefa; fecha quando sai de uma tarefa."""
-    if antes in ("", "—", "-") or antes == agora:
+    if antes in ("", "—", "-") or id_tarefa(antes) == id_tarefa(agora):
         return None
     resumo = ", ".join(f"{delegs.count(x)}× {x}" for x in sorted(set(delegs))) or "nenhuma"
     txt = f"Entrega '{antes}' fechada: {n_ferr} chamadas no chat principal, delegações: {resumo}."
@@ -103,6 +105,12 @@ def fechamento(antes, agora, n_ferr, n_deleg, delegs):
                 " leitura de mais de 3 arquivos, logs): na próxima entrega, delegue essas partes.")
     return txt + (" Feche a entrega: leia get_usage e diga ao usuário em 1 linha o % da Definição de Pronto, as"
                   " pendências bloqueantes, as delegações acima e o uso do plano (aplique 'Limites do plano').")
+
+
+def id_tarefa(t):
+    """'E7 tela de login' e 'E7 tela de login (testes)' são a mesma tarefa: compara pelo ID quando houver."""
+    m = re.match(r"\s*([A-Za-z]{1,3}-?\d+)\b", t)
+    return m.group(1).upper() if m else t.strip()
 
 
 def digitado(t):
@@ -264,14 +272,20 @@ def cmd_fim(dados):
             st["subir"] = 1
     # fechamento de entrega: mede delegações desde que a tarefa começou e pede o fechamento (get_usage, %, bloqueantes)
     tarefa = campo(texto, "Tarefa")
-    ent = st.get(sid + ":ent") or [tarefa, t["ferramentas"], len(t["delegacoes"])]
+    ent = st.get(sid + ":ent")
+    if not (isinstance(ent, list) and len(ent) == 3):
+        ent = [tarefa, t["ferramentas"], len(t["delegacoes"])]
+    if t["ferramentas"] < ent[1] or len(t["delegacoes"]) < ent[2]:  # transcript novo (retomada): conta do zero
+        ent = [ent[0], 0, 0]
     fecho = fechamento(ent[0], tarefa, t["ferramentas"] - ent[1], len(t["delegacoes"]) - ent[2], t["delegacoes"][ent[2]:])
     if fecho and bloquear(fecho):  # se outro motivo já usou a vez, fecha na próxima parada
         linha = fecho.split(" Zero")[0].split(" Feche")[0]
         saida["systemMessage"] = saida["systemMessage"] + " · " + linha if "systemMessage" in saida else "[gestão] " + linha
         ent = [tarefa, t["ferramentas"], len(t["delegacoes"])]
-    elif not fecho and ent[0] != tarefa:  # começou tarefa: a contagem parte daqui
+    elif not fecho and id_tarefa(ent[0]) != id_tarefa(tarefa):  # começou tarefa: a contagem parte daqui
         ent = [tarefa, t["ferramentas"], len(t["delegacoes"])]
+    elif not fecho:
+        ent[0] = tarefa  # mesma tarefa com outro texto: mantém a contagem
     st[sid + ":ent"] = ent
     # PROJETO.md desatualizado: devolve a vez ao Claude uma vez por versão do arquivo
     mtime = int(os.path.getmtime(os.path.join(cwd, "PROJETO.md")))
@@ -313,9 +327,9 @@ def cmd_janela(dados):
     pasta = os.path.dirname(dados.get("transcript_path", "")) or ""
     bases = []
     if os.path.isdir(pasta):
-        for nome in sorted(os.listdir(pasta))[-30:]:
-            if nome.endswith(".jsonl"):
-                bases += ler_transcript(os.path.join(pasta, nome))["bases"]
+        logs = [os.path.join(pasta, n) for n in os.listdir(pasta) if n.endswith(".jsonl")]
+        for p in sorted(logs, key=os.path.getmtime)[-30:]:  # os 30 chats mais recentes
+            bases += ler_transcript(p)["bases"]
     ideal = janela_ideal(statistics.median(bases) if bases else None)
     json.dump({"ideal": ideal, "amostras": len(bases)}, open(os.path.join(pasta_estado(cwd), "ideal.json"), "w"))
     nova = rede_seguranca(ideal)
@@ -381,8 +395,14 @@ def cmd_status(dados):
     rows = [r for r in ler_medicao(cwd) if len(r) > 3]
     ctx = f"{int(rows[-1][2]) // 1000}k" if rows else "?"
     pct = f"{100 * feitos // total}%" if total else "sem Definição de Pronto"
+    try:
+        with open(os.path.join(pasta_estado(cwd), "erros.log"), encoding="utf-8") as f:
+            erros = sum(1 for l in f if l[:4].isdigit())  # cada erro começa com a data
+    except OSError:
+        erros = 0
     print(f"Nível {campo(texto, 'Nível') or '?'} · pronto {pct} · {bloq} pendência(s) bloqueante(s) · "
-          f"contexto {ctx} / ponto ideal {ler_ideal(cwd) // 1000}k · tarefa: {campo(texto, 'Tarefa') or '—'}")
+          f"contexto {ctx} / ponto ideal {ler_ideal(cwd) // 1000}k · tarefa: {campo(texto, 'Tarefa') or '—'}"
+          + (f" · {erros} erro(s) do hook em .claude/gestao/erros.log" if erros else ""))
 
 
 def cmd_resumo(dados):
@@ -424,6 +444,8 @@ def teste():
     assert fechamento("—", "E1", 5, 0, []) is None and fechamento("E1", "E1", 50, 0, []) is None
     assert "falha" in fechamento("E1", "—", 20, 0, []) and "falha" not in fechamento("E1", "—", 20, 1, ["haiku/low"])
     assert "1× haiku/low" in fechamento("E1", "E2", 3, 1, ["haiku/low"]) and "falha" not in fechamento("E1", "—", 5, 0, [])
+    assert id_tarefa("E7 tela") == id_tarefa("e7 tela (testes)") and id_tarefa("E7") != id_tarefa("E8")
+    assert fechamento("E7 tela", "E7 tela (testes)", 30, 0, []) is None and id_tarefa("ajuste logo") == "ajuste logo"
     print("ok")
 
 
@@ -437,5 +459,16 @@ if __name__ == "__main__":
         dados = json.loads(sys.stdin.read() or "{}") if not sys.stdin.isatty() else {}
     except ValueError:
         dados = {}
-    {"fim": cmd_fim, "janela": cmd_janela, "resumo": cmd_resumo, "status": cmd_status,
-     "linha-base": cmd_linha_base}.get(modo, lambda d: print(__doc__))(dados)
+    try:
+        {"fim": cmd_fim, "janela": cmd_janela, "resumo": cmd_resumo, "status": cmd_status,
+         "linha-base": cmd_linha_base}.get(modo, lambda d: print(__doc__))(dados)
+    except Exception:
+        if modo not in ("fim", "janela"):
+            raise
+        # hook nunca quebra o chat: registra o erro para diagnóstico e sai em silêncio
+        import traceback
+        try:
+            with open(os.path.join(pasta_estado(dados.get("cwd") or os.getcwd()), "erros.log"), "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + modo + "\n" + traceback.format_exc() + "\n")
+        except Exception:  # nem o registro do erro pode quebrar o chat
+            pass

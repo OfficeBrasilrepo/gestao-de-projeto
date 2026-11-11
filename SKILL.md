@@ -84,14 +84,14 @@ Independentemente do modo:
 - **Meta:** ao fechar cada entrega, informe o % da Definição de Pronto e quantas pendências bloqueantes restam. Em 100%, avise e confira pendências e perguntas (o projeto não encerra sozinho).
 
 ## Status e medição
-- "status": `python ~/.claude/skills/gestao-de-projeto/scripts/monitor.py status < /dev/null` → nível, % pronto, pendências bloqueantes, contexto atual, tarefa. Repasse a linha.
+- "status": `python ~/.claude/skills/gestao-de-projeto/scripts/monitor.py status < /dev/null` → nível, % pronto, pendências bloqueantes, contexto atual, tarefa e, se houver, quantos erros do hook foram registrados. Repasse a linha; com erros, leia o fim de `.claude/gestao/erros.log` e corrija ou avise.
 - "a skill está economizando?": `python ~/.claude/skills/gestao-de-projeto/scripts/monitor.py resumo < /dev/null` → contexto médio por resposta agora × antes da skill. Diga com franqueza que a comparação é aproximada (trabalhos diferentes) e só vale após ~1 semana ou ~200 respostas.
   Procure também no PROJETO.md (grep "linha de base") um registro de uso do painel do Claude Code (custo, leitura de cache, linhas alteradas). Se houver, peça ao usuário o print atual do painel de Uso e compare custo por linha alterada e leitura de cache por sessão, lado a lado com a saída do `resumo`.
 
 ## Atualização do PROJETO.md
 - **Rede contra arquivo velho:** se houver commit depois da última edição do PROJETO.md, ou 20+ respostas com arquivos alterados sem editá-lo, o hook `Stop` devolve a vez com a ordem de atualizar. Faça a atualização em silêncio e continue.
 - Edição pontual (Edit) a cada decisão, entrega, pendência ou pergunta nova, e antes de `/compact`.
-- **Em andamento** (`- Tarefa: … · Próximo passo: … · Arquivos: …`): sobrescreva ao iniciar e ao concluir cada tarefa; ao concluir, use `- Tarefa: —`. O hook usa esse campo para saber se é um bom momento de trocar de chat e para fechar a entrega (contagem de delegações, `get_usage`, % pronto). Esquecer de atualizá-lo atrasa tudo isso.
+- **Em andamento** (`- Tarefa: … · Próximo passo: … · Arquivos: …`): sobrescreva ao iniciar e ao concluir cada tarefa, começando pelo ID da entrega (`- Tarefa: E7 tela de login`); ao concluir, use `- Tarefa: —`. Mudar só o texto da mesma tarefa (E7 → E7 com testes) não conta como fechamento. O hook usa esse campo para saber se é um bom momento de trocar de chat e para fechar a entrega (contagem de delegações, `get_usage`, % pronto). Esquecer de atualizá-lo atrasa tudo isso.
 - Concluídos vão para `PROJETO-ARQUIVO.md` (~150 linhas ativas, teto 300).
 - Completo: sincronize (`bash ~/.claude/skills/gestao-de-projeto/scripts/sync-estado.sh`) ao fim de cada tarefa, ao registrar decisão, após merge/deploy, ao fim da sessão e antes de `/compact`.
 - A skill nunca roda `/compact` (só o usuário pode). Quem avisa o momento é o hook.
