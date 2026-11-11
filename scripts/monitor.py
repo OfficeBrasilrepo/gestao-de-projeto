@@ -104,7 +104,8 @@ def fechamento(antes, agora, n_ferr, n_deleg, delegs):
         txt += (" Zero delegações com esse volume é falha da regra 'Sempre fora do principal' (testes, build, navegador,"
                 " leitura de mais de 3 arquivos, logs): na próxima entrega, delegue essas partes.")
     return txt + (" Feche a entrega: leia get_usage e diga ao usuário em 1 linha o % da Definição de Pronto, as"
-                  " pendências bloqueantes, as delegações acima e o uso do plano (aplique 'Limites do plano').")
+                  " pendências bloqueantes, as delegações acima e o uso do plano (aplique 'Limites do plano'). Arquive os chats de tarefa dessa entrega"
+                  " que não têm mais reuso, se a Configuração mandar (seção 'Arquivar chats sem reuso').")
 
 
 def id_tarefa(t):
