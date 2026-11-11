@@ -7,6 +7,7 @@
   monitor.py resumo  -> números do projeto, comparando com a linha de base.
   monitor.py status  -> uma linha: nível, % pronto, pendências bloqueantes, contexto atual.
   monitor.py linha-base -> mede os logs do projeto ANTES da skill (rodar uma vez, na adoção).
+  monitor.py relatorio [dias] -> .claude/gestao/relatorio.md para conferir a skill (só números, sem código nem conversa).
 Entrada dos hooks: JSON no stdin com cwd, session_id, transcript_path."""
 import csv, json, os, re, statistics, subprocess, sys, time, unicodedata
 
@@ -14,7 +15,7 @@ MIN, MAX, PADRAO = 100_000, 300_000, 150_000
 # Avisos em TOKENS ABSOLUTOS, não em % da janela do usuário:
 FIM_TAREFA = 0.70   # tarefa concluída e contexto >= 70% do ponto ideal -> sugere /compact
 URGENTE = 0.90      # contexto >= 90% do limite automático -> salve o estado já
-SEGUIR_MAX = 25     # modo Executar: continuações automáticas por mensagem do usuário
+SEGUIR_MAX = 8      # modo Executar: continuações seguidas SEM progresso (PROJETO.md parado); com progresso, zera
 DELEG_MIN = 15     # chamadas no chat principal numa entrega a partir das quais zero delegação é falha
 PARADA = "nada a seguir sem você"  # frase com que o Claude encerra quando tudo depende do usuário
 
@@ -36,7 +37,7 @@ def ler_transcript(caminho):
     compactação), abertura (1º turno: custo fixo de abrir um chat), compact (nº de compactações),
     ultimo (último texto do Claude) e usuario (nº de mensagens digitadas pelo usuário)."""
     r = {"ctx": [], "bases": [], "abertura": 0, "compact": 0, "ultimo": "", "usuario": 0,
-         "ferramentas": 0, "delegacoes": []}  # chamadas feitas no próprio chat × subagentes/novos chats
+         "ferramentas": 0, "delegacoes": [], "usos": {}, "modelos": {}}  # chamadas feitas no próprio chat × subagentes/novos chats
     depois = False
     try:
         f = open(caminho, encoding="utf-8")
@@ -58,6 +59,8 @@ def ler_transcript(caminho):
             if not isinstance(m, dict):
                 continue
             if d.get("type") == "assistant" and m.get("usage"):
+                if m.get("model"):
+                    r["modelos"][m["model"]] = r["modelos"].get(m["model"], 0) + 1
                 u = m["usage"]
                 c = sum(u.get(x) or 0 for x in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
                 if not r["ctx"] or c != r["ctx"][-1]:
@@ -86,6 +89,8 @@ def ler_transcript(caminho):
 def delegacao(b, r):
     """Conta uma chamada de ferramenta: subagente (Agent/Task) ou novo chat entra em delegacoes, com o modelo."""
     nome, inp = b.get("name", ""), b.get("input") or {}
+    curto = nome.split("__")[-1]  # mcp__ccd_session__start_session -> start_session
+    r["usos"][curto] = r["usos"].get(curto, 0) + 1
     if nome in ("Agent", "Task"):
         r["delegacoes"].append(f"{inp.get('model') or 'herdado'}/{inp.get('effort') or '-'}")
     elif nome.endswith("start_session"):
@@ -243,6 +248,10 @@ def cmd_fim(dados):
         saida["decision"], saida["reason"] = "block", "[gestão] " + reason
         return True
 
+    def evento(tipo, extra=""):  # só contagens, sem conteúdo: alimenta o 'monitor.py relatorio'
+        with open(os.path.join(est, "eventos.csv"), "a", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow([int(time.time()), sid, tipo, ctx[-1], extra])
+
     # Cada bloqueio abaixo dispara no máximo uma vez (por ciclo ou por versão do arquivo), então não depende de
     # stop_hook_active: no modo Executar quase toda parada é uma continuação e eles nunca disparariam.
     ativa = campo(texto, "Tarefa") not in ("", "—", "-")
@@ -250,6 +259,7 @@ def cmd_fim(dados):
     if alerta:
         st[chave], msg = alerta
         saida["systemMessage"] = "[gestão] " + msg  # só o usuário vê; não gasta tokens
+        evento(f"aviso{alerta[0]}")
     # novo chat só compensa acima do dobro da base (o novo começaria nela de novo, sem cache)
     base = t["bases"][-1] if t["bases"] else t["abertura"]
     if not st.get(chave + ":p"):
@@ -265,12 +275,14 @@ def cmd_fim(dados):
             proposta = ""
         if proposta and bloquear(f"contexto {k(ctx[-1])}: " + proposta):
             st[chave + ":p"] = 1
+            evento("proposta_chat")
     rows = ler_medicao(cwd)
     sessoes = len({r[1] for r in rows if len(r) > 1})
     if precisa_subir(campo(texto, "Nível"), sessoes, compact, max(ctx)) and not st.get("subir"):
         if bloquear(f"o projeto cresceu ({sessoes} sessões, {compact} compactações, pico {k(max(ctx))}). Suba agora "
                     "para o nível completo, conforme 'Níveis' da skill gestao-de-projeto, e avise o usuário em uma linha."):
             st["subir"] = 1
+            evento("subir_nivel")
     # fechamento de entrega: mede delegações desde que a tarefa começou e pede o fechamento (get_usage, %, bloqueantes)
     tarefa = campo(texto, "Tarefa")
     ent = st.get(sid + ":ent")
@@ -282,6 +294,7 @@ def cmd_fim(dados):
     if fecho and bloquear(fecho):  # se outro motivo já usou a vez, fecha na próxima parada
         linha = fecho.split(" Zero")[0].split(" Feche")[0]
         saida["systemMessage"] = saida["systemMessage"] + " · " + linha if "systemMessage" in saida else "[gestão] " + linha
+        evento("entrega", f"{id_tarefa(ent[0])}|{t['ferramentas'] - ent[1]}|{'+'.join(t['delegacoes'][ent[2]:])}")
         ent = [tarefa, t["ferramentas"], len(t["delegacoes"])]
     elif not fecho and id_tarefa(ent[0]) != id_tarefa(tarefa):  # começou tarefa: a contagem parte daqui
         ent = [tarefa, t["ferramentas"], len(t["delegacoes"])]
@@ -298,17 +311,29 @@ def cmd_fim(dados):
         if motivo and bloquear(f"{motivo}. Atualize agora o PROJETO.md (Em andamento, com 'Tarefa: —' se a tarefa acabou; Entregas, Decisões, Pendências, "
                                "Branches) com edições pontuais e sincronize se o nível for completo. Não fale disso ao usuário."):
             st["lembrete"] = mtime
+            evento("lembrete")
     # modo Executar: não para enquanto houver o que avançar sem o usuário (limite por mensagem dele, contra custo sem fim)
     if "decision" not in saida and campo(texto, "Modo").lower().startswith("executar"):
         ultimo = dados.get("last_assistant_message") or t["ultimo"]  # o campo do hook, se houver, é o mais fresco
-        seg = st.get(sid + ":seg", [t["usuario"], 0])
-        if seg[0] != t["usuario"]:
-            seg = [t["usuario"], 0]
-        if not parou(ultimo) and seg[1] < SEGUIR_MAX:
+        seg = st.get(sid + ":seg")
+        # [mensagens do usuário, continuações sem progresso, versão do PROJETO.md]: mensagem nova ou PROJETO.md
+        # atualizado (entrega, pendência, Em andamento) contam como progresso e zeram o contador
+        if not (isinstance(seg, list) and len(seg) == 3) or seg[0] != t["usuario"] or seg[2] != mtime:
+            seg = [t["usuario"], 0, mtime]
+        if parou(ultimo):
+            evento("parou")
+        elif seg[1] < SEGUIR_MAX:
             seg[1] += 1
+            evento("executar")
             bloquear(f"Modo Executar ({k(ctx[-1])}): siga para o próximo item que não depende do usuário, por "
                      "prioridade, e atualize o PROJETO.md a cada um; o que depende dele vai para Pendências. Se nada mais "
                      f"avança sem ele, termine com '{PARADA}', resumo e próximo passo clicável.")
+        elif seg[1] == SEGUIR_MAX:
+            seg[1] += 1  # avisa uma vez só
+            evento("teto")
+            saida["systemMessage"] = (saida["systemMessage"] + " · " if "systemMessage" in saida else "[gestão] ") + (
+                f"modo Executar pausado: {SEGUIR_MAX} continuações seguidas sem o PROJETO.md avançar (possível loop). "
+                "Confira o último passo e mande seguir.")
         st[sid + ":seg"] = seg
     # guarda as sessões recentes: dois chats abertos no mesmo projeto não apagam o estado um do outro
     recentes = {r[1] for r in rows[-500:] if len(r) > 1} | {sid}
@@ -371,6 +396,85 @@ def cmd_linha_base(dados):
     json.dump(base, open(os.path.join(pasta_estado(cwd), "linha-base.json"), "w"))
     print(f"Linha de base: {len(ctxs)} respostas em {sessoes} sessões antes da skill"
           + (f", contexto médio {base['ctx_medio'] // 1000}k por resposta" if ctxs else " (sem histórico: a comparação começa do zero)"))
+
+
+def cmd_relatorio(dados):
+    """Relatório para conferir a skill no uso real: só números e nomes de ferramentas, nada de código ou conversa."""
+    cwd = dados.get("cwd") or os.getcwd()
+    dias = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 7
+    desde = time.time() - dias * 86400
+    pasta = pasta_logs(cwd)
+    logs = [os.path.join(pasta, n) for n in os.listdir(pasta)] if os.path.isdir(pasta) else []
+    logs = sorted((p for p in logs if p.endswith(".jsonl") and os.path.getmtime(p) >= desde), key=os.path.getmtime)
+    chave = ("Agent", "Task", "start_session", "archive_session", "set_session_title", "get_usage",
+             "create_scheduled_task", "set_session_connector_enabled", "session_connectors_status", "Skill", "ToolSearch")
+    out = [f"# Relatório da skill gestao-de-projeto ({time.strftime('%Y-%m-%d %H:%M')}, últimos {dias} dias)", "",
+           "## Chats do projeto", "| chat | respostas | ctx médio | pico | compact. | msgs do usuário | modelo principal | "
+           "chamadas no principal | delegações | ferramentas da skill |", "|---|---|---|---|---|---|---|---|---|---|"]
+    sub_modelos = {}
+    for p in logs:
+        t = ler_transcript(p)
+        if not t["ctx"]:
+            continue
+        nome = os.path.basename(p)[:8]
+        modelo = max(t["modelos"], key=t["modelos"].get) if t["modelos"] else "?"
+        deleg = ", ".join(f"{t['delegacoes'].count(x)}× {x}" for x in sorted(set(t["delegacoes"]))) or "nenhuma"
+        usos = ", ".join(f"{c} {t['usos'][c]}" for c in chave if t["usos"].get(c)) or "—"
+        out.append(f"| {nome} | {len(t['ctx'])} | {statistics.mean(t['ctx']) // 1000:.0f}k | {max(t['ctx']) // 1000}k | "
+                   f"{t['compact']} | {t['usuario']} | {modelo} | {t['ferramentas']} | {deleg} | {usos} |")
+        # transcripts dos subagentes (quando o app os guarda à parte): modelo que de fato rodou
+        sp = os.path.join(pasta, os.path.splitext(os.path.basename(p))[0], "subagents")
+        if os.path.isdir(sp):
+            for n in os.listdir(sp):
+                if n.endswith(".jsonl"):
+                    for mo, q in ler_transcript_bruto_modelos(os.path.join(sp, n)).items():
+                        sub_modelos[mo] = sub_modelos.get(mo, 0) + q
+    out += ["", "## Modelos que rodaram nos subagentes (respostas)",
+            ", ".join(f"{m}: {q}" for m, q in sorted(sub_modelos.items())) or "nenhum transcript de subagente encontrado"]
+    est = pasta_estado(cwd)
+    try:
+        with open(os.path.join(est, "eventos.csv"), encoding="utf-8") as f:
+            ev = [r for r in csv.reader(f) if len(r) >= 3 and r[0].isdigit() and int(r[0]) >= desde]
+    except OSError:
+        ev = []
+    tipos = {}
+    for r in ev:
+        tipos[r[2]] = tipos.get(r[2], 0) + 1
+    out += ["", "## Eventos do hook", ", ".join(f"{k}: {v}" for k, v in sorted(tipos.items())) or "nenhum",
+            "", "## Entregas fechadas (chamadas no principal | delegações)"]
+    out += [f"- {r[4].replace('|', ' | ')}" for r in ev if r[2] == "entrega" and len(r) > 4] or ["- nenhuma"]
+    try:
+        with open(os.path.join(est, "erros.log"), encoding="utf-8") as f:
+            erros = f.read().strip().splitlines()
+    except OSError:
+        erros = []
+    out += ["", "## Erros do hook", "\n".join(erros[-30:]) if erros else "nenhum"]
+    texto = projeto(cwd)
+    m = re.search(r"###\s*Configura.*?\n(.*?)(?=\n#|\Z)", texto, re.S)  # só a seção Configuração
+    out += ["", "## Configuração atual (do PROJETO.md)", m.group(1).strip()[:1500] if m else "sem seção Configuração"]
+    destino = os.path.join(est, "relatorio.md")
+    with open(destino, "w", encoding="utf-8") as f:
+        f.write("\n".join(out) + "\n")
+    print(f"Relatório salvo em {destino} ({len(logs)} chats, {len(ev)} eventos). Não tem código nem conversa: "
+          "só números, nomes de ferramentas e a Configuração do PROJETO.md. Confira antes de enviar.")
+
+
+def ler_transcript_bruto_modelos(caminho):
+    """Modelos das respostas num transcript de subagente (sem pular isSidechain, que ali é sempre true)."""
+    mod = {}
+    try:
+        with open(caminho, encoding="utf-8") as f:
+            for linha in f:
+                try:
+                    d = json.loads(linha)
+                except ValueError:
+                    continue
+                m = d.get("message") if isinstance(d, dict) else None
+                if isinstance(m, dict) and d.get("type") == "assistant" and m.get("model"):
+                    mod[m["model"]] = mod.get(m["model"], 0) + 1
+    except OSError:
+        pass
+    return mod
 
 
 def comparar(atual, base):
@@ -462,7 +566,7 @@ if __name__ == "__main__":
         dados = {}
     try:
         {"fim": cmd_fim, "janela": cmd_janela, "resumo": cmd_resumo, "status": cmd_status,
-         "linha-base": cmd_linha_base}.get(modo, lambda d: print(__doc__))(dados)
+         "linha-base": cmd_linha_base, "relatorio": cmd_relatorio}.get(modo, lambda d: print(__doc__))(dados)
     except Exception:
         if modo not in ("fim", "janela"):
             raise

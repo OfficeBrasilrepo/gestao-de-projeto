@@ -21,4 +21,4 @@ Abra o Claude Code num projeto e diga "usar a skill gestao-de-projeto neste proj
 - `SKILL.md`: fluxo e regras centrais.
 - `modelo-PROJETO.md`: modelo do arquivo de estado.
 - `git.md`, `compactacao.md`, `design.md`: lidos só quando o assunto aparece.
-- `scripts/`: `monitor.py` (medição, avisos, status), `resumo-retomada.py` (hook de abertura), `sync-estado.sh` / `restaurar-estado.sh` (espelho na branch `projeto-estado`), `comparar-visual.mjs` (antes/depois com Playwright).
+- `scripts/`: `monitor.py` (medição, avisos, status, relatório para conferir a skill), `resumo-retomada.py` (hook de abertura), `sync-estado.sh` / `restaurar-estado.sh` (espelho na branch `projeto-estado`), `comparar-visual.mjs` (antes/depois com Playwright).
